@@ -1,0 +1,11 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:15
+    container_name: print_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: 3d_print
+    ports:
+      - "5432:5432"
