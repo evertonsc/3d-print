@@ -1,0 +1,41 @@
+<div class="grid">
+
+  <div class="metric green">
+    <h3>Revenue</h3>
+    <p>{{ revenue }}</p>
+  </div>
+
+  <div class="metric red">
+    <h3>Cost</h3>
+    <p>{{ cost }}</p>
+  </div>
+
+  <div class="metric purple">
+    <h3>Profit</h3>
+    <p>{{ profit }}</p>
+  </div>
+
+</div>
+
+<div class="table">
+
+  <h2>Productions</h2>
+
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Product</th>
+      <th>Qty</th>
+      <th>Total</th>
+    </tr>
+
+    <tr *ngFor="let p of productions">
+      <td>{{p.id}}</td>
+      <td>{{p.product_id}}</td>
+      <td>{{p.quantity}}</td>
+      <td>{{p.total_cost}}</td>
+    </tr>
+
+  </table>
+
+</div>

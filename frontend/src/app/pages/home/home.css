@@ -1,0 +1,33 @@
+.home h1 {
+  margin-bottom: 10px;
+}
+
+.hero {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+}
+
+.printer {
+  width: 300px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.05);
+}
+
+.highlight {
+  margin-top: 30px;
+  padding: 20px;
+  background: #e2fbe8;
+  border-radius: 10px;
+}

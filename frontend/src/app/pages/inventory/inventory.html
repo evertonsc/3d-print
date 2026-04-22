@@ -1,0 +1,38 @@
+<div class="card">
+
+  <h2>Inventory</h2>
+
+  <input [(ngModel)]="name" placeholder="Material name" />
+  <input [(ngModel)]="quantity" placeholder="Quantity" />
+
+  <button (click)="add()">Add</button>
+
+  <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
+    {{ message }}
+  </div>
+
+</div>
+
+<div class="card">
+
+  <h2>Stock List</h2>
+
+  <ul>
+    <li *ngFor="let i of inventory">
+      {{ i.name }} - {{ i.quantity }}
+    </li>
+  </ul>
+
+</div>
+
+<div class="card warning" *ngIf="lowStock.length">
+
+  <h3>⚠ Low Stock</h3>
+
+  <ul>
+    <li *ngFor="let i of lowStock">
+      {{ i.name }} ({{ i.quantity }})
+    </li>
+  </ul>
+
+</div>

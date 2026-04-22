@@ -1,0 +1,12 @@
+.grid {
+  display: flex;
+  gap: 20px;
+}
+
+.metric {
+  flex: 1;
+  padding: 20px;
+  border-radius: 10px;
+  background: #f4f4f4;
+  text-align: center;
+}

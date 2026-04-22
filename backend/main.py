@@ -1,5 +1,5 @@
 from database import SessionLocal, engine
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import models
 from sqlalchemy.orm import Session
@@ -83,6 +83,11 @@ def produce(product_id: int, quantity: int, db: Session = Depends(get_db)):
 
     # descontar material do estoque
     material = db.query(models.Inventory).filter(models.Inventory.name == "filament").first()
+
+    needed = product.material_grams * quantity
+
+    if not material or material.quantity < needed:
+        raise HTTPException(status_code=400, detail=f"Not enough stock. Needed: {needed}, Available: {material.quantity}")
 
     if material:
         total_material_needed = product.material_grams * quantity

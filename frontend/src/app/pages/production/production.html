@@ -1,0 +1,28 @@
+<div class="card">
+
+  <h2>Production</h2>
+
+  <input [(ngModel)]="product_id" placeholder="Product ID" />
+  <input [(ngModel)]="quantity" placeholder="Quantity" />
+
+  <button (click)="produce()">Run Production</button>
+
+  <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
+    {{ message }}
+  </div>
+
+</div>
+
+<div class="card">
+
+  <h2>Production History</h2>
+
+  <ul>
+    <li *ngFor="let p of productions">
+      Product {{p.product_id}} |
+      Qty {{p.quantity}} |
+      Total {{p.total_cost}}
+    </li>
+  </ul>
+
+</div>

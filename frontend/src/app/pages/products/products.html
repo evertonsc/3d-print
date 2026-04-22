@@ -1,0 +1,16 @@
+<div class="card">
+
+  <h2>Create Product</h2>
+
+  <input [(ngModel)]="name" placeholder="Name" />
+  <input [(ngModel)]="material_grams" placeholder="Material (grams)" />
+  <input [(ngModel)]="print_time_hours" placeholder="Print time (hours)" />
+  <input [(ngModel)]="material_cost_per_gram" placeholder="Cost per gram" />
+
+  <button (click)="create()">Submit</button>
+
+  <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
+    {{ message }}
+  </div>
+
+</div>
