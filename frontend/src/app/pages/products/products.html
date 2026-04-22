@@ -1,4 +1,4 @@
-<div class="card">
+<!-- <div class="card">
 
   <h2>Create Product</h2>
 
@@ -12,5 +12,24 @@
   <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
     {{ message }}
   </div>
+
+</div> -->
+
+
+<div class="card">
+
+  <div style="display:flex; justify-content:space-between;">
+    <h2>Products</h2>
+    <button>+ Novo Produto</button>
+  </div>
+
+  <div class="grid" style="grid-template-columns: repeat(4,1fr); margin-top:20px;">
+    <input placeholder="Nome">
+    <input placeholder="Material (g)">
+    <input placeholder="Tempo (h)">
+    <input placeholder="Custo/g">
+  </div>
+
+  <button style="margin-top:10px;">Cadastrar</button>
 
 </div>
