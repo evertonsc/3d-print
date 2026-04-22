@@ -8,8 +8,12 @@
 .home-hero h1 { margin: 0 0 6px; }
 .subtitle { color: var(--text-muted); margin: 0 0 20px; }
 .printer-img { width: 100%; max-width: 360px; display: block; margin: 0 auto; }
+h3 {
+  margin-bottom: 0.5rem;
+}
 .tagline { color: var(--primary); font-weight: 600; text-align: center; margin-top: 12px; }
 .muted   { color: var(--text-muted); }
+.slogan { font-size: 14px; text-align: center; margin-top: 0px; }
 
 .kpis {
   display: grid;
