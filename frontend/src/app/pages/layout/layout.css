@@ -1,0 +1,45 @@
+.layout {
+    display: flex;
+    height: 100vh;
+    font-family: Inter, sans-serif;
+}
+
+.sidebar {
+    width: 220px;
+    background: #0f172a;
+    color: white;
+    padding: 20px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    margin-bottom: 30px;
+}
+
+.logo img {
+    width: 35px;
+}
+
+nav a {
+    display: block;
+    padding: 10px;
+    border-radius: 6px;
+    color: #cbd5e1;
+    text-decoration: none;
+    margin-bottom: 10px;
+}
+
+nav a:hover {
+    background: #1e293b;
+    color: white;
+}
+
+.content {
+    flex: 1;
+    padding: 30px;
+    background: #f1f5f9;
+    overflow: auto;
+}
