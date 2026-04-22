@@ -1,55 +1,46 @@
-<!-- <div class="card">
-
-  <h2>Inventory</h2>
-
-  <input [(ngModel)]="name" placeholder="Material name" />
-  <input [(ngModel)]="quantity" placeholder="Quantity" />
-
-  <button (click)="add()">Add</button>
-
-  <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
-    {{ message }}
-  </div>
-
-</div>
-
 <div class="card">
-
-  <h2>Stock List</h2>
-
-  <ul>
-    <li *ngFor="let i of inventory">
-      {{ i.name }} - {{ i.quantity }}
-    </li>
-  </ul>
-
-</div>
-
-<div class="card warning" *ngIf="lowStock.length">
-
-  <h3>⚠ Low Stock</h3>
-
-  <ul>
-    <li *ngFor="let i of lowStock">
-      {{ i.name }} ({{ i.quantity }})
-    </li>
-  </ul>
-
-</div> -->
-
-
-<div class="card">
-
-  <div style="display:flex; justify-content:space-between;">
+  <div class="card-header">
     <h2>Inventory</h2>
-    <button>+ Adicionar Material</button>
+    <button class="btn btn-primary">+ Adicionar Material</button>
   </div>
 
-  <div class="grid" style="grid-template-columns: 2fr 1fr;">
-    <input placeholder="Material">
-    <input placeholder="Quantidade">
+  <div class="inv-grid">
+    <div><label class="label">Nome do Material</label><input class="input" [(ngModel)]="name" placeholder="Filamento PLA"></div>
+    <div><label class="label">Quantidade (g)</label> <input class="input" type="number" [(ngModel)]="quantity"></div>
+    <button class="btn btn-primary" (click)="add()">Adicionar</button>
   </div>
 
-  <button>Adicionar</button>
+  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
+    <span>{{ message }}</span>
+    <button class="btn btn-icon" (click)="dismiss()">✕</button>
+  </div>
 
+  <h3 style="margin-top:24px;">Materiais em Estoque</h3>
+  <table class="table">
+    <thead>
+      <tr><th>Material</th><th>Quantidade (g)</th><th>Valor por grama (R$)</th><th>Valor Total (R$)</th><th>Ações</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let i of inventory">
+        <td>{{ i.name }}</td>
+        <td [class.positive]="i.quantity >= threshold" [class.danger]="i.quantity < threshold">{{ i.quantity }}</td>
+        <td>{{ i.unit_cost | number:'1.2-2' }}</td>
+        <td>{{ (i.quantity * (i.unit_cost || 0)) | number:'1.2-2' }}</td>
+        <td>
+          <button class="btn btn-primary btn-icon" title="Editar">✎</button>
+          <button class="btn btn-danger" title="Excluir">🗑</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-warning" *ngIf="lowStock.length" style="margin-top:16px;">
+    <div>
+      <strong>⚠ Atenção: Estoque Baixo</strong>
+      <p style="margin:4px 0 0;">Os materiais abaixo estão com estoque baixo e podem comprometer futuras produções.</p>
+      <ul style="margin:8px 0 0; padding-left:20px;">
+        <li *ngFor="let i of lowStock">{{ i.name }} — {{ i.quantity }}g (mínimo recomendado: {{ threshold }}g)</li>
+      </ul>
+    </div>
+  </div>
 </div>

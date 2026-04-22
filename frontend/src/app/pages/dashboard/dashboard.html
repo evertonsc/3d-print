@@ -1,41 +1,31 @@
-<div class="grid">
-
-  <div class="metric green">
-    <h3>Revenue</h3>
-    <p>{{ revenue }}</p>
+<div class="dash-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon green">$</div>
+    <div><small>Revenue</small><h2>R$ {{ revenue | number:'1.2-2' }}</h2></div>
   </div>
-
-  <div class="metric red">
-    <h3>Cost</h3>
-    <p>{{ cost }}</p>
+  <div class="kpi-card">
+    <div class="kpi-icon red">📉</div>
+    <div><small>Cost</small><h2>R$ {{ cost | number:'1.2-2' }}</h2></div>
   </div>
-
-  <div class="metric purple">
-    <h3>Profit</h3>
-    <p>{{ profit }}</p>
+  <div class="kpi-card">
+    <div class="kpi-icon purple">📈</div>
+    <div><small>Profit</small><h2>R$ {{ profit | number:'1.2-2' }}</h2></div>
   </div>
-
 </div>
 
-<div class="table">
-
+<div class="card" style="margin-top:24px;">
   <h2>Productions</h2>
-
-  <table>
-    <tr>
-      <th>ID</th>
-      <th>Product</th>
-      <th>Qty</th>
-      <th>Total</th>
-    </tr>
-
-    <tr *ngFor="let p of productions">
-      <td>{{p.id}}</td>
-      <td>{{p.product_id}}</td>
-      <td>{{p.quantity}}</td>
-      <td>{{p.total_cost}}</td>
-    </tr>
-
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Produto</th><th>Qty</th><th>Total</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of productions">
+        <td>{{ p.id }}</td>
+        <td>{{ p.product_id }}</td>
+        <td>{{ p.quantity }}</td>
+        <td>R$ {{ p.total_cost | number:'1.2-2' }}</td>
+      </tr>
+    </tbody>
   </table>
-
 </div>

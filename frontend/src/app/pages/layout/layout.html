@@ -1,22 +1,28 @@
 <div class="layout">
-
-    <aside class="sidebar">
+  <aside class="sidebar">
     <div class="logo">
-        <img src="./../../../assets/logo.png" />
-        <span>Tom Studio 3D</span>
+      <img src="assets/logo.png" alt="Tom Studio 3D" />
+      <span>Tom Studio 3D</span>
     </div>
 
     <nav>
-        <a routerLink="/">Home</a>
-        <a routerLink="/dashboard">Dashboard</a>
-        <a routerLink="/products">Products</a>
-        <a routerLink="/production">Production</a>
-        <a routerLink="/inventory">Inventory</a>
+      <a routerLink="/"           routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">🏠 Home</a>
+      <a routerLink="/dashboard"  routerLinkActive="active">📊 Dashboard</a>
+      <a routerLink="/products"   routerLinkActive="active">📦 Products</a>
+      <a routerLink="/production" routerLinkActive="active">⚙️ Production</a>
+      <a routerLink="/inventory"  routerLinkActive="active">🗃️ Inventory</a>
     </nav>
-    </aside>
 
-    <main class="content">
+    <div class="user">
+      <div class="avatar">T</div>
+      <div class="user-info">
+        <strong>Tom</strong>
+        <small>Admin</small>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
     <router-outlet></router-outlet>
-    </main>
-
+  </main>
 </div>

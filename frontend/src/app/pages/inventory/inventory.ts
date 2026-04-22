@@ -1,19 +1,22 @@
-import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { ApiService } from '../../services/api.service';
+
+const LOW_STOCK_THRESHOLD = 200; // TODO: move to per-material config
 
 @Component({
   standalone: true,
   selector: 'app-inventory',
   imports: [CommonModule, FormsModule],
   templateUrl: './inventory.html',
-  styleUrls: ['./inventory.css']
+  styleUrls: ['./inventory.css'],
 })
-export class Inventory {
+export class Inventory implements OnInit {
+  private api = inject(ApiService);
 
   name = '';
-  quantity: any;
+  quantity: number | null = null;
 
   inventory: any[] = [];
   lowStock: any[] = [];
@@ -21,42 +24,25 @@ export class Inventory {
   message = '';
   success = true;
 
-  constructor(private http: HttpClient) {
-    this.load();
-  }
+  threshold = LOW_STOCK_THRESHOLD;
 
-  add() {
-    this.http.post(
-      `http://localhost:8000/stock?name=${this.name}&quantity=${this.quantity}`,
-      {}
-    ).subscribe({
-      next: () => {
-        this.success = true;
-        this.message = 'Estoque atualizado';
-        this.clear();
-        this.load();
-      },
-      error: () => {
-        this.success = false;
-        this.message = 'Erro ao atualizar estoque';
-      }
+  ngOnInit() { this.load(); }
+
+  load() {
+    this.api.listStock().subscribe(d => {
+      this.inventory = d;
+      this.lowStock = d.filter(i => (i.quantity ?? 0) < this.threshold);
     });
   }
 
-  load() {
-    this.http.get<any[]>('http://localhost:8000/stock')
-      .subscribe(data => {
-        this.inventory = data;
-        this.checkLowStock();
-      });
+  add() {
+    if (!this.name || this.quantity == null) return;
+    this.api.addStock(this.name, this.quantity).subscribe({
+      next: () => { this.success = true; this.message = 'Estoque atualizado com sucesso!'; this.clear(); this.load(); },
+      error: () => { this.success = false; this.message = 'Erro ao atualizar estoque'; },
+    });
   }
 
-  checkLowStock() {
-    this.lowStock = this.inventory.filter(i => i.quantity < 200);
-  }
-
-  clear() {
-    this.name = '';
-    this.quantity = '';
-  }
+  clear() { this.name = ''; this.quantity = null; }
+  dismiss() { this.message = ''; }
 }

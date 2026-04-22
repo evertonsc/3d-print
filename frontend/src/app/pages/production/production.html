@@ -1,48 +1,54 @@
-<!-- <div class="card">
-
-  <h2>Production</h2>
-
-  <input [(ngModel)]="product_id" placeholder="Product ID" />
-  <input [(ngModel)]="quantity" placeholder="Quantity" />
-
-  <button (click)="produce()">Run Production</button>
-
-  <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
-    {{ message }}
+<div class="card">
+  <div class="card-header">
+    <h2>Production</h2>
+    <button class="btn btn-primary">+ Nova Produção</button>
   </div>
 
+  <div class="prod-grid">
+    <div>
+      <label class="label">Produto</label>
+      <select class="input" [(ngModel)]="product_id" (change)="recalc()">
+        <option [ngValue]="null">Selecione...</option>
+        <option *ngFor="let p of products" [ngValue]="p.id">{{ p.name }} (ID: {{p.id}})</option>
+      </select>
+    </div>
+    <div>
+      <label class="label">Quantidade</label>
+      <input class="input" type="number" [(ngModel)]="quantity" (input)="recalc()">
+    </div>
+    <div class="card summary">
+      <strong>Resumo do Cálculo</strong>
+      <div>Custo Unitário: <b>R$ {{ unitCost | number:'1.2-2' }}</b></div>
+      <div>Custo Total:    <b>R$ {{ totalCost | number:'1.2-2' }}</b></div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" style="margin-top:16px; width:100%;" (click)="produce()">Iniciar Produção</button>
+
+  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
+    <span>{{ message }}</span>
+    <button class="btn btn-icon" (click)="dismiss()">✕</button>
+  </div>
 </div>
 
-<div class="card">
+<div class="card" style="margin-top:24px;">
+  <h3>Produções Realizadas</h3>
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Produto</th><th>Quantidade</th><th>Custo Unitário (R$)</th><th>Custo Total (R$)</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of productions">
+        <td>{{ p.id }}</td>
+        <td>{{ p.product_id }}</td>
+        <td>{{ p.quantity }}</td>
+        <td>{{ p.unit_cost  | number:'1.2-2' }}</td>
+        <td>{{ p.total_cost | number:'1.2-2' }}</td>
+      </tr>
+    </tbody>
+  </table>
 
-  <h2>Production History</h2>
-
-  <ul>
-    <li *ngFor="let p of productions">
-      Product {{p.product_id}} |
-      Qty {{p.quantity}} |
-      Total {{p.total_cost}}
-    </li>
-  </ul>
-
-</div> -->
-
-
-<div class="card">
-
-  <div style="display:flex; justify-content:space-between;">
-    <h2>Production</h2>
-    <button>+ Nova Produção</button>
+  <div class="alert alert-info" style="margin-top:16px;">
+    Validação de Estoque: materiais insuficientes para produção serão destacados.
   </div>
-
-  <div class="grid" style="grid-template-columns: 2fr 1fr;">
-    <select>
-      <option>Produto</option>
-    </select>
-
-    <input placeholder="Quantidade">
-  </div>
-
-  <button>Iniciar Produção</button>
-
 </div>

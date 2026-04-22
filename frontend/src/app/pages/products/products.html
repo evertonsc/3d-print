@@ -1,35 +1,39 @@
-<!-- <div class="card">
-
-  <h2>Create Product</h2>
-
-  <input [(ngModel)]="name" placeholder="Name" />
-  <input [(ngModel)]="material_grams" placeholder="Material (grams)" />
-  <input [(ngModel)]="print_time_hours" placeholder="Print time (hours)" />
-  <input [(ngModel)]="material_cost_per_gram" placeholder="Cost per gram" />
-
-  <button (click)="create()">Submit</button>
-
-  <div *ngIf="message" class="popup" [ngClass]="{success: success, error: !success}">
-    {{ message }}
-  </div>
-
-</div> -->
-
-
 <div class="card">
-
-  <div style="display:flex; justify-content:space-between;">
+  <div class="card-header">
     <h2>Products</h2>
-    <button>+ Novo Produto</button>
+    <button class="btn btn-primary">+ Novo Produto</button>
   </div>
 
-  <div class="grid" style="grid-template-columns: repeat(4,1fr); margin-top:20px;">
-    <input placeholder="Nome">
-    <input placeholder="Material (g)">
-    <input placeholder="Tempo (h)">
-    <input placeholder="Custo/g">
+  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
+    <span>{{ message }}</span>
+    <button class="btn btn-icon" (click)="dismiss()">✕</button>
   </div>
 
-  <button style="margin-top:10px;">Cadastrar</button>
+  <div class="form-grid">
+    <div><label class="label">Nome</label>          <input class="input" [(ngModel)]="name" placeholder="Suporte Celular"></div>
+    <div><label class="label">Material (g)</label>  <input class="input" type="number" [(ngModel)]="material_grams"></div>
+    <div><label class="label">Tempo Impressão (h)</label><input class="input" type="number" [(ngModel)]="print_time_hours"></div>
+    <div><label class="label">Custo por grama (R$)</label><input class="input" type="number" [(ngModel)]="material_cost_per_gram"></div>
+    <button class="btn btn-primary" (click)="create()">Cadastrar</button>
+  </div>
 
+  <h3 style="margin-top:24px;">Produtos Cadastrados</h3>
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Nome</th><th>Material (g)</th><th>Tempo (h)</th><th>Custo/grama (R$)</th><th>Ações</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of products">
+        <td>{{ p.id }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.material_grams }}</td>
+        <td>{{ p.print_time_hours }}</td>
+        <td>{{ p.material_cost_per_gram }}</td>
+        <td>
+          <button class="btn btn-primary btn-icon" title="Editar">✎</button>
+          <button class="btn btn-danger" title="Excluir">🗑</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>

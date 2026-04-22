@@ -1,54 +1,52 @@
-import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { ApiService } from '../../services/api.service';
 
 @Component({
   standalone: true,
   selector: 'app-production',
   imports: [CommonModule, FormsModule],
   templateUrl: './production.html',
-  styleUrls: ['./production.css']
+  styleUrls: ['./production.css'],
 })
-export class Production {
+export class Production implements OnInit {
+  private api = inject(ApiService);
 
-  product_id: any;
-  quantity: any;
+  product_id: number | null = null;
+  quantity: number | null = null;
 
+  products: any[] = [];
   productions: any[] = [];
 
   message = '';
   success = true;
 
-  constructor(private http: HttpClient) {
+  unitCost = 0;
+  totalCost = 0;
+
+  ngOnInit() {
+    this.api.listProducts().subscribe(d => this.products = d);
     this.load();
   }
 
+  load() { this.api.listProductions().subscribe(d => this.productions = d); }
+
+  recalc() {
+    const p = this.products.find(x => x.id === Number(this.product_id));
+    if (!p || !this.quantity) { this.unitCost = 0; this.totalCost = 0; return; }
+    this.unitCost  = (p.material_grams ?? 0) * (p.material_cost_per_gram ?? 0);
+    this.totalCost = this.unitCost * this.quantity;
+  }
+
   produce() {
-    this.http.post(
-      `http://localhost:8000/produce?product_id=${this.product_id}&quantity=${this.quantity}`,
-      {}
-    ).subscribe({
-      next: () => {
-        this.success = true;
-        this.message = 'Produção realizada com sucesso';
-        this.clear();
-        this.load();
-      },
-      error: () => {
-        this.success = false;
-        this.message = 'Erro na produção (estoque insuficiente?)';
-      }
+    if (!this.product_id || !this.quantity) return;
+    this.api.produce(this.product_id, this.quantity).subscribe({
+      next: () => { this.success = true; this.message = 'Produção registrada com sucesso!'; this.clear(); this.load(); },
+      error: () => { this.success = false; this.message = 'Erro na produção (estoque insuficiente?)'; },
     });
   }
 
-  load() {
-    this.http.get<any[]>('http://localhost:8000/productions')
-      .subscribe(data => this.productions = data);
-  }
-
-  clear() {
-    this.product_id = '';
-    this.quantity = '';
-  }
+  clear() { this.product_id = null; this.quantity = null; this.recalc(); }
+  dismiss() { this.message = ''; }
 }

@@ -1,0 +1,10 @@
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.prod-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 16px;
+  align-items: end;
+}
+.summary { background: var(--bg); padding: 14px; }
+.summary div { margin-top: 4px; font-size: 14px; }
+@media (max-width: 900px) { .prod-grid { grid-template-columns: 1fr; } }

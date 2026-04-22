@@ -1,45 +1,60 @@
 .layout {
-    display: flex;
-    height: 100vh;
-    font-family: Inter, sans-serif;
+  display: flex;
+  min-height: 100vh;
 }
 
 .sidebar {
-    width: 220px;
-    background: #0f172a;
-    color: white;
-    padding: 20px;
+  width: 240px;
+  background: var(--sidebar);
+  color: #fff;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: bold;
-    margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  margin-bottom: 32px;
 }
+.logo img { width: 32px; height: 32px; }
 
-.logo img {
-    width: 35px;
-}
-
+nav { flex: 1; }
 nav a {
-    display: block;
-    padding: 10px;
-    border-radius: 6px;
-    color: #cbd5e1;
-    text-decoration: none;
-    margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-text);
+  text-decoration: none;
+  margin-bottom: 4px;
+  transition: background .15s ease;
 }
+nav a:hover  { background: var(--sidebar-hover); color: #fff; }
+nav a.active { background: var(--primary); color: #fff; }
 
-nav a:hover {
-    background: #1e293b;
-    color: white;
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--sidebar-hover);
 }
+.avatar {
+  background: var(--primary);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold;
+}
+.user-info { display: flex; flex-direction: column; }
+.user-info small { color: var(--sidebar-text); font-size: 12px; }
 
 .content {
-    flex: 1;
-    padding: 30px;
-    background: #f1f5f9;
-    overflow: auto;
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
 }

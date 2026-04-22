@@ -1,4 +1,10 @@
-.warning {
-  background: #fff4e5;
-  border-left: 5px solid orange;
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.inv-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 12px;
+  align-items: end;
 }
+.positive { color: var(--primary); font-weight: 600; }
+.danger   { color: var(--danger);  font-weight: 600; }
+@media (max-width: 900px) { .inv-grid { grid-template-columns: 1fr; } }
