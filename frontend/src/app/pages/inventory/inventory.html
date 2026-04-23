@@ -1,13 +1,30 @@
 <div class="card">
   <div class="card-header">
-    <h2>Inventory</h2>
-    <button class="btn btn-primary">+ Adicionar Material</button>
+    <h2>Estoque de Filamentos</h2>
+    <small class="muted">Cada linha é um carretel físico — cor, marca, fabricante, fonte, data de compra e gramas restantes.</small>
   </div>
 
-  <div class="inv-grid">
-    <div><label class="label">Nome do Material</label><input class="input" [(ngModel)]="name" placeholder="Filamento PLA"></div>
-    <div><label class="label">Quantidade (g)</label> <input class="input" type="number" [(ngModel)]="quantity"></div>
-    <button class="btn btn-primary" (click)="add()">Adicionar</button>
+  <div class="form-grid">
+    <div><label class="label">Cor</label>          <input class="input" [(ngModel)]="form.color" placeholder="Preto, Branco..."></div>
+    <div><label class="label">Marca</label>        <input class="input" [(ngModel)]="form.brand" placeholder="Bambu, N3D, Creality..."></div>
+    <div><label class="label">Tipo</label>
+      <select class="input" [(ngModel)]="form.type">
+        <option>PLA</option><option>PETG</option><option>TPU</option>
+        <option>PLA Silk</option><option>PLA Matte</option><option>PLA Basic</option>
+        <option>PLA Glow</option><option>Outro</option>
+      </select>
+    </div>
+    <div><label class="label">Filamento (catálogo)</label>
+      <select class="input" [(ngModel)]="form.filament_id">
+        <option [ngValue]="null">— sem vínculo —</option>
+        <option *ngFor="let f of filaments" [ngValue]="f.id">{{ f.name }}</option>
+      </select>
+    </div>
+    <div><label class="label">Origem (onde comprou)</label><input class="input" [(ngModel)]="form.source" placeholder="Tiktok, Eder 14/02..."></div>
+    <div><label class="label">Data da compra</label><input class="input" type="date" [(ngModel)]="form.purchase_date"></div>
+    <div><label class="label">Valor pago no carretel (R$)</label><input class="input" type="number" step="0.01" [(ngModel)]="form.purchase_price"></div>
+    <div><label class="label">Quantidade (g)</label><input class="input" type="number" [(ngModel)]="form.quantity_grams"></div>
+    <button class="btn btn-primary" (click)="add()">+ Adicionar Carretel</button>
   </div>
 
   <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
@@ -15,31 +32,44 @@
     <button class="btn btn-icon" (click)="dismiss()">✕</button>
   </div>
 
-  <h3 style="margin-top:24px;">Materiais em Estoque</h3>
+  <h3 style="margin-top:24px;">Carretéis em estoque</h3>
   <table class="table">
     <thead>
-      <tr><th>Material</th><th>Quantidade (g)</th><th>Valor por grama (R$)</th><th>Valor Total (R$)</th><th>Ações</th></tr>
+      <tr>
+        <th>Cor</th><th>Marca</th><th>Tipo</th><th>Origem</th>
+        <th>Comprado em</th><th>Valor pago</th><th>Restante (g)</th>
+        <th>Ajustar (g)</th><th></th>
+      </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let i of inventory">
-        <td>{{ i.name }}</td>
-        <td [class.positive]="i.quantity >= threshold" [class.danger]="i.quantity < threshold">{{ i.quantity }}</td>
-        <td>{{ i.unit_cost | number:'1.2-2' }}</td>
-        <td>{{ (i.quantity * (i.unit_cost || 0)) | number:'1.2-2' }}</td>
-        <td>
-          <button class="btn btn-primary btn-icon" title="Editar">✎</button>
-          <button class="btn btn-danger" title="Excluir">🗑</button>
+      <tr *ngFor="let s of spools">
+        <td><span class="dot"></span> {{ s.color }}</td>
+        <td>{{ s.brand }}</td>
+        <td>{{ s.type }}</td>
+        <td>{{ s.source }}</td>
+        <td>{{ s.purchase_date | date:'dd/MM/yyyy' }}</td>
+        <td>R$ {{ s.purchase_price | number:'1.2-2' }}</td>
+        <td [class.positive]="(s.quantity_grams||0) >= threshold"
+            [class.danger]="(s.quantity_grams||0) < threshold">
+          {{ s.quantity_grams | number:'1.0-0' }} g
         </td>
+        <td>
+          <input class="input" style="max-width:90px;" type="number"
+                 [ngModel]="adjust[s.id!] || 0" (ngModelChange)="adjust[s.id!] = $event"
+                 placeholder="±g">
+          <button class="btn btn-primary btn-icon" (click)="applyAdjust(s.id)">✓</button>
+        </td>
+        <td><button class="btn btn-danger" (click)="remove(s.id)">🗑</button></td>
       </tr>
+      <tr *ngIf="!spools.length"><td colspan="9" class="muted" style="text-align:center;padding:24px;">Nenhum carretel cadastrado.</td></tr>
     </tbody>
   </table>
 
   <div class="alert alert-warning" *ngIf="lowStock.length" style="margin-top:16px;">
     <div>
       <strong>⚠ Atenção: Estoque Baixo</strong>
-      <p style="margin:4px 0 0;">Os materiais abaixo estão com estoque baixo e podem comprometer futuras produções.</p>
       <ul style="margin:8px 0 0; padding-left:20px;">
-        <li *ngFor="let i of lowStock">{{ i.name }} — {{ i.quantity }}g (mínimo recomendado: {{ threshold }}g)</li>
+        <li *ngFor="let s of lowStock">{{ s.color }} ({{ s.brand }}) — {{ s.quantity_grams | number:'1.0-0' }}g (mínimo: {{ threshold }}g)</li>
       </ul>
     </div>
   </div>

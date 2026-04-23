@@ -1,9 +1,9 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ApiService } from '../../services/api.service';
+import { ApiService, Filament, FilamentSpool } from '../../services/api.service';
 
-const LOW_STOCK_THRESHOLD = 200; // TODO: move to per-material config
+const LOW_STOCK_GRAMS = 200;
 
 @Component({
   standalone: true,
@@ -15,34 +15,67 @@ const LOW_STOCK_THRESHOLD = 200; // TODO: move to per-material config
 export class Inventory implements OnInit {
   private api = inject(ApiService);
 
-  name = '';
-  quantity: number | null = null;
+  spools: FilamentSpool[] = [];
+  filaments: Filament[] = [];
+  lowStock: FilamentSpool[] = [];
+  threshold = LOW_STOCK_GRAMS;
 
-  inventory: any[] = [];
-  lowStock: any[] = [];
+  // New spool form (matches handwritten note image #2: qty / color / brand /
+  // type / source / purchase date)
+  form: FilamentSpool = {
+    filament_id: null,
+    color: '',
+    brand: '',
+    type: 'PLA',
+    source: '',
+    purchase_date: new Date().toISOString().substring(0, 10),
+    purchase_price: 0,
+    quantity_grams: 1000,
+  };
 
-  message = '';
-  success = true;
+  // Adjust grams form
+  adjust: { [id: number]: number } = {};
 
-  threshold = LOW_STOCK_THRESHOLD;
+  message = ''; success = true;
 
-  ngOnInit() { this.load(); }
+  ngOnInit() { this.load(); this.api.listFilaments().subscribe(d => this.filaments = d); }
 
   load() {
-    this.api.listStock().subscribe(d => {
-      this.inventory = d;
-      this.lowStock = d.filter(i => (i.quantity ?? 0) < this.threshold);
+    this.api.listSpools().subscribe(d => {
+      this.spools = d;
+      this.lowStock = d.filter(s => (s.quantity_grams ?? 0) < this.threshold);
     });
   }
 
   add() {
-    if (!this.name || this.quantity == null) return;
-    this.api.addStock(this.name, this.quantity).subscribe({
-      next: () => { this.success = true; this.message = 'Estoque atualizado com sucesso!'; this.clear(); this.load(); },
-      error: () => { this.success = false; this.message = 'Erro ao atualizar estoque'; },
+    if (!this.form.color) return;
+    const payload: FilamentSpool = {
+      ...this.form,
+      purchase_date: this.form.purchase_date ? new Date(this.form.purchase_date).toISOString() : null,
+    };
+    this.api.createSpool(payload).subscribe({
+      next: () => {
+        this.success = true; this.message = 'Carretel adicionado.';
+        this.form = { filament_id: null, color: '', brand: '', type: 'PLA', source: '',
+                      purchase_date: new Date().toISOString().substring(0,10),
+                      purchase_price: 0, quantity_grams: 1000 };
+        this.load();
+      },
+      error: () => { this.success = false; this.message = 'Erro ao adicionar.'; },
     });
   }
 
-  clear() { this.name = ''; this.quantity = null; }
+  remove(id?: number) {
+    if (!id) return;
+    this.api.deleteSpool(id).subscribe(() => this.load());
+  }
+
+  applyAdjust(id?: number) {
+    if (!id) return;
+    const d = Number(this.adjust[id] ?? 0);
+    if (!d) return;
+    this.api.adjustSpool(id, d).subscribe(() => { this.adjust[id] = 0; this.load(); });
+  }
+
   dismiss() { this.message = ''; }
 }

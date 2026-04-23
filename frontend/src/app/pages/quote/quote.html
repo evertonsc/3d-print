@@ -1,0 +1,76 @@
+<div class="card">
+  <div class="card-header">
+    <h2>Orçamento</h2>
+    <small class="muted">Calcule custo, preço sugerido e preço de marketplace antes de imprimir.</small>
+  </div>
+
+  <div class="form-grid">
+    <div><label class="label">Nome do projeto</label>
+      <input class="input" [(ngModel)]="form.project_name" placeholder="Ex.: Vaso Voronoi"></div>
+
+    <div><label class="label">Impressora</label>
+      <select class="input" [(ngModel)]="form.printer_id">
+        <option [ngValue]="0">Selecione...</option>
+        <option *ngFor="let p of printers" [ngValue]="p.id">{{ p.name }}</option>
+      </select>
+    </div>
+
+    <div><label class="label">Filamento</label>
+      <select class="input" [(ngModel)]="form.filament_id">
+        <option [ngValue]="0">Selecione...</option>
+        <option *ngFor="let f of filaments" [ngValue]="f.id">{{ f.name }} (R$ {{ f.price_per_kg | number:'1.2-2' }}/kg)</option>
+      </select>
+    </div>
+
+    <div><label class="label">Quantidade a imprimir</label>
+      <input class="input" type="number" min="1" [(ngModel)]="form.quantity"></div>
+
+    <div><label class="label">Filamento por unidade (g)</label>
+      <input class="input" type="number" [(ngModel)]="form.filament_grams"></div>
+
+    <div><label class="label">Tempo de impressão por unidade (h)</label>
+      <input class="input" type="number" step="0.1" [(ngModel)]="form.print_time_hours"></div>
+
+    <div><label class="label">Trabalho por unidade (h)</label>
+      <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours"></div>
+
+    <div><label class="label">Insumos por unidade (R$)</label>
+      <input class="input" type="number" step="0.5" [(ngModel)]="form.supplies_cost"></div>
+
+    <div><label class="label">Embalagem por unidade (R$)</label>
+      <input class="input" type="number" step="0.5" [(ngModel)]="form.packaging_cost"></div>
+
+    <div><label class="label">Preço filamento (R$/kg) — opcional, sobrescreve o catálogo</label>
+      <input class="input" type="number" step="0.1" [(ngModel)]="form.override_price_per_kg"
+             placeholder="Use ao comprar carretel mais caro/barato"></div>
+  </div>
+
+  <div style="margin-top:16px; display:flex; gap:12px;">
+    <button class="btn btn-primary" (click)="calculate()">Calcular</button>
+    <button class="btn btn-primary" *ngIf="result" (click)="downloadPdf()">⬇ Baixar Orçamento (PDF)</button>
+    <button class="btn" style="background:#0f172a;color:#fff" *ngIf="result" (click)="saveAsJob()">Salvar como Produção</button>
+  </div>
+
+  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
+    {{ message }}
+  </div>
+</div>
+
+<div class="card" style="margin-top:24px;" *ngIf="result">
+  <h3>Resultado do orçamento</h3>
+  <table class="table">
+    <thead>
+      <tr><th>Componente</th><th>Por unidade</th><th>Total ({{ result.quantity }} un)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Filamento</td>      <td>R$ {{ result.per_unit.filament_cost | number:'1.2-4' }}</td>     <td>R$ {{ result.filament_cost | number:'1.2-2' }}</td></tr>
+      <tr><td>Energia</td>        <td>R$ {{ result.per_unit.energy_cost | number:'1.2-4' }}</td>       <td>R$ {{ result.energy_cost | number:'1.2-2' }}</td></tr>
+      <tr><td>Depreciação</td>    <td>R$ {{ result.per_unit.depreciation_cost | number:'1.2-4' }}</td> <td>R$ {{ result.depreciation_cost | number:'1.2-2' }}</td></tr>
+      <tr><td>Trabalho</td>       <td>R$ {{ result.per_unit.labor_cost | number:'1.2-4' }}</td>        <td>R$ {{ result.labor_cost | number:'1.2-2' }}</td></tr>
+      <tr><td>Subtotal</td>       <td><b>R$ {{ result.per_unit.subtotal | number:'1.2-2' }}</b></td>   <td><b>R$ {{ result.subtotal | number:'1.2-2' }}</b></td></tr>
+      <tr><td>Custo final (c/ taxa de falha)</td><td><b>R$ {{ result.per_unit.final_cost | number:'1.2-2' }}</b></td><td><b>R$ {{ result.final_cost | number:'1.2-2' }}</b></td></tr>
+      <tr><td>Preço sugerido</td> <td><b>R$ {{ result.per_unit.suggested_price | number:'1.2-2' }}</b></td><td><b>R$ {{ result.suggested_price | number:'1.2-2' }}</b></td></tr>
+      <tr><td>Preço marketplace</td><td><b>R$ {{ result.per_unit.marketplace_price | number:'1.2-2' }}</b></td><td><b>R$ {{ result.marketplace_price | number:'1.2-2' }}</b></td></tr>
+    </tbody>
+  </table>
+</div>

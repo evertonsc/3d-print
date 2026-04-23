@@ -1,30 +1,63 @@
 <div class="dash-grid">
   <div class="kpi-card">
     <div class="kpi-icon green">$</div>
-    <div><small>Revenue</small><h2>R$ {{ revenue | number:'1.2-2' }}</h2></div>
+    <div><small>Receita Total</small><h2>R$ {{ totalRevenue | number:'1.2-2' }}</h2></div>
   </div>
   <div class="kpi-card">
     <div class="kpi-icon red">📉</div>
-    <div><small>Cost</small><h2>R$ {{ cost | number:'1.2-2' }}</h2></div>
+    <div><small>Custo Total</small><h2>R$ {{ totalCost | number:'1.2-2' }}</h2></div>
   </div>
   <div class="kpi-card">
     <div class="kpi-icon purple">📈</div>
-    <div><small>Profit</small><h2>R$ {{ profit | number:'1.2-2' }}</h2></div>
+    <div><small>Lucro Líquido</small><h2>R$ {{ totalProfit | number:'1.2-2' }}</h2></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon teal">%</div>
+    <div><small>Margem</small><h2>{{ (profitPct * 100) | number:'1.1-1' }}%</h2></div>
   </div>
 </div>
 
 <div class="card" style="margin-top:24px;">
-  <h2>Productions</h2>
+  <h2>DRE — Demonstrativo Mensal</h2>
   <table class="table">
     <thead>
-      <tr><th>ID</th><th>Produto</th><th>Qty</th><th>Total</th></tr>
+      <tr>
+        <th>Mês</th><th>Filamento (kg)</th><th>Tempo (h)</th><th>Trabalho (h)</th>
+        <th>Insumos</th><th>Embalagens</th><th>Energia</th>
+        <th>Custo Total</th><th>Vendas</th><th>Lucro %</th><th>Jobs</th>
+      </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let p of productions">
-        <td>{{ p.id }}</td>
-        <td>{{ p.product_id }}</td>
-        <td>{{ p.quantity }}</td>
-        <td>R$ {{ p.total_cost | number:'1.2-2' }}</td>
+      <tr *ngFor="let r of dre">
+        <td>{{ formatMonth(r.month) }}</td>
+        <td>{{ r.filament_kg | number:'1.2-2' }}</td>
+        <td>{{ r.print_time_hours | number:'1.1-1' }}</td>
+        <td>{{ r.labor_hours | number:'1.1-1' }}</td>
+        <td>R$ {{ r.supplies_cost | number:'1.2-2' }}</td>
+        <td>R$ {{ r.packaging_cost | number:'1.2-2' }}</td>
+        <td>R$ {{ r.energy_cost | number:'1.2-2' }}</td>
+        <td><b>R$ {{ r.total_cost | number:'1.2-2' }}</b></td>
+        <td>R$ {{ r.sales | number:'1.2-2' }}</td>
+        <td>{{ r.profit_pct !== null ? ((r.profit_pct! * 100) | number:'1.1-1') + '%' : '—' }}</td>
+        <td>{{ r.jobs }}</td>
+      </tr>
+      <tr *ngIf="!dre.length"><td colspan="11" class="muted" style="text-align:center;padding:24px;">Sem dados ainda.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:24px;">
+  <h2>Últimas Produções</h2>
+  <table class="table">
+    <thead><tr><th>Data</th><th>Projeto</th><th>Qtd</th><th>Custo</th><th>Vendido</th><th>Lucro %</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let j of jobs.slice(0, 10)">
+        <td>{{ j.date | date:'dd/MM/yy' }}</td>
+        <td>{{ j.project_name }}</td>
+        <td>{{ j.quantity }}</td>
+        <td>R$ {{ j.final_cost | number:'1.2-2' }}</td>
+        <td>R$ {{ j.sold_value | number:'1.2-2' }}</td>
+        <td>{{ j.profit_pct !== null ? ((j.profit_pct! * 100) | number:'1.1-1') + '%' : '—' }}</td>
       </tr>
     </tbody>
   </table>

@@ -1,0 +1,63 @@
+<div class="card">
+  <h2>Configurações Gerais (planilha "Outros")</h2>
+  <div class="form-grid">
+    <div><label class="label">Custo de Energia (R$/kWh)</label><input class="input" type="number" step="0.01" [(ngModel)]="settings.energy_cost_per_kwh"></div>
+    <div><label class="label">Custo de Trabalho (R$/h)</label> <input class="input" type="number" step="0.01" [(ngModel)]="settings.labor_cost_per_hour"></div>
+    <div><label class="label">Taxa de Falha (%)</label>        <input class="input" type="number" step="0.1"  [(ngModel)]="settings.failure_rate"></div>
+    <div><label class="label">Markup</label>                   <input class="input" type="number" step="0.05" [(ngModel)]="settings.markup"></div>
+    <div><label class="label">Taxa Marketplace (0–1)</label>   <input class="input" type="number" step="0.01" [(ngModel)]="settings.marketplace_fee"></div>
+    <div><label class="label">Imposto (0–1)</label>            <input class="input" type="number" step="0.01" [(ngModel)]="settings.tax"></div>
+    <div><label class="label">Taxa Fixa (R$)</label>           <input class="input" type="number" step="0.5"  [(ngModel)]="settings.fixed_fee"></div>
+    <div><label class="label">Moeda</label>                    <input class="input" [(ngModel)]="settings.currency"></div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:16px;" (click)="save()">Salvar</button>
+  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">{{ message }}</div>
+</div>
+
+<div class="card" style="margin-top:24px;">
+  <h2>Impressoras</h2>
+  <div class="form-grid">
+    <div><label class="label">Nome</label>          <input class="input" [(ngModel)]="newPrinter.name"></div>
+    <div><label class="label">Fabricante</label>    <input class="input" [(ngModel)]="newPrinter.manufacturer"></div>
+    <div><label class="label">Preço (R$)</label>    <input class="input" type="number" [(ngModel)]="newPrinter.price"></div>
+    <div><label class="label">Depreciação (h)</label><input class="input" type="number" [(ngModel)]="newPrinter.depreciation_hours"></div>
+    <div><label class="label">Manutenção (R$)</label><input class="input" type="number" [(ngModel)]="newPrinter.maintenance_cost"></div>
+    <div><label class="label">Consumo (kWh/h)</label><input class="input" type="number" step="0.01" [(ngModel)]="newPrinter.avg_power_kwh"></div>
+    <button class="btn btn-primary" (click)="addPrinter()">+ Adicionar</button>
+  </div>
+  <table class="table" style="margin-top:16px;">
+    <thead><tr><th>Nome</th><th>Fabricante</th><th>Preço</th><th>Dep. (h)</th><th>Dep. R$/h</th><th>kWh/h</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let p of printers">
+        <td>{{p.name}}</td><td>{{p.manufacturer}}</td><td>R$ {{p.price | number:'1.2-2'}}</td>
+        <td>{{p.depreciation_hours}}</td><td>R$ {{p.depreciation_per_hour | number:'1.4-4'}}</td>
+        <td>{{p.avg_power_kwh}}</td>
+        <td><button class="btn btn-danger" (click)="delPrinter(p.id)">🗑</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:24px;">
+  <h2>Catálogo de Filamentos</h2>
+  <div class="form-grid">
+    <div><label class="label">Nome</label>           <input class="input" [(ngModel)]="newFilament.name"></div>
+    <div><label class="label">Fabricante</label>     <input class="input" [(ngModel)]="newFilament.manufacturer"></div>
+    <div><label class="label">Tipo</label>           <input class="input" [(ngModel)]="newFilament.type"></div>
+    <div><label class="label">Diâmetro (mm)</label>  <input class="input" type="number" step="0.01" [(ngModel)]="newFilament.diameter_mm"></div>
+    <div><label class="label">Preço carretel (R$)</label><input class="input" type="number" [(ngModel)]="newFilament.spool_price"></div>
+    <div><label class="label">Peso carretel (kg)</label><input class="input" type="number" step="0.1" [(ngModel)]="newFilament.spool_weight_kg"></div>
+    <div><label class="label">Densidade (g/cm³)</label><input class="input" type="number" step="0.01" [(ngModel)]="newFilament.density"></div>
+    <button class="btn btn-primary" (click)="addFilament()">+ Adicionar</button>
+  </div>
+  <table class="table" style="margin-top:16px;">
+    <thead><tr><th>Nome</th><th>Tipo</th><th>Preço carretel</th><th>R$/kg</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let f of filaments">
+        <td>{{f.name}}</td><td>{{f.type}}</td><td>R$ {{f.spool_price | number:'1.2-2'}}</td>
+        <td>R$ {{f.price_per_kg | number:'1.2-2'}}</td>
+        <td><button class="btn btn-danger" (click)="delFilament(f.id)">🗑</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>

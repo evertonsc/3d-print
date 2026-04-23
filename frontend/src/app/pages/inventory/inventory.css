@@ -1,10 +1,6 @@
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.inv-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr auto;
-  gap: 12px;
-  align-items: end;
-}
-.positive { color: var(--primary); font-weight: 600; }
-.danger   { color: var(--danger);  font-weight: 600; }
-@media (max-width: 900px) { .inv-grid { grid-template-columns: 1fr; } }
+.form-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:16px; align-items:end; }
+.muted { color: var(--text-muted); }
+.positive { color:#16a34a; font-weight:600; }
+.danger   { color:#ef4444; font-weight:600; }
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#94a3b8; margin-right:6px; }
+.card-header { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
