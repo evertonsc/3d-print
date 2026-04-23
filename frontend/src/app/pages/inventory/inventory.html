@@ -24,12 +24,7 @@
     <div><label class="label">Data da compra</label><input class="input" type="date" [(ngModel)]="form.purchase_date"></div>
     <div><label class="label">Valor pago no carretel (R$)</label><input class="input" type="number" step="0.01" [(ngModel)]="form.purchase_price"></div>
     <div><label class="label">Quantidade (g)</label><input class="input" type="number" [(ngModel)]="form.quantity_grams"></div>
-    <button class="btn btn-primary" (click)="add()">+ Adicionar Carretel</button>
-  </div>
-
-  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
-    <span>{{ message }}</span>
-    <button class="btn btn-icon" (click)="dismiss()">✕</button>
+    <button class="btn btn-primary" (click)="add()" [disabled]="busy">{{ busy ? 'Salvando…' : '+ Adicionar Carretel' }}</button>
   </div>
 
   <h3 style="margin-top:24px;">Carretéis em estoque</h3>
@@ -57,9 +52,9 @@
           <input class="input" style="max-width:90px;" type="number"
                  [ngModel]="adjust[s.id!] || 0" (ngModelChange)="adjust[s.id!] = $event"
                  placeholder="±g">
-          <button class="btn btn-primary btn-icon" (click)="applyAdjust(s.id)">✓</button>
+          <button class="btn btn-primary btn-icon" (click)="applyAdjust(s.id)" [disabled]="adjusting[s.id!]">{{ adjusting[s.id!] ? '…' : '✓' }}</button>
         </td>
-        <td><button class="btn btn-danger" (click)="remove(s.id)">🗑</button></td>
+        <td><button class="btn btn-danger" (click)="remove(s.id)" [disabled]="removing[s.id!]">{{ removing[s.id!] ? '…' : '🗑' }}</button></td>
       </tr>
       <tr *ngIf="!spools.length"><td colspan="9" class="muted" style="text-align:center;padding:24px;">Nenhum carretel cadastrado.</td></tr>
     </tbody>

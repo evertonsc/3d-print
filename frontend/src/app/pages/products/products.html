@@ -4,17 +4,12 @@
     <button class="btn btn-primary">+ Novo Produto</button>
   </div>
 
-  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
-    <span>{{ message }}</span>
-    <button class="btn btn-icon" (click)="dismiss()">✕</button>
-  </div>
-
   <div class="form-grid">
     <div><label class="label">Nome</label>          <input class="input" [(ngModel)]="name" placeholder="Suporte Celular"></div>
     <div><label class="label">Material (g)</label>  <input class="input" type="number" [(ngModel)]="material_grams"></div>
     <div><label class="label">Tempo Impressão (h)</label><input class="input" type="number" [(ngModel)]="print_time_hours"></div>
     <div><label class="label">Custo por grama (R$)</label><input class="input" type="number" [(ngModel)]="material_cost_per_gram"></div>
-    <button class="btn btn-primary" (click)="create()">Cadastrar</button>
+    <button class="btn btn-primary" (click)="create()" [disabled]="busy">{{ busy ? 'Salvando…' : 'Cadastrar' }}</button>
   </div>
 
   <h3 style="margin-top:24px;">Produtos Cadastrados</h3>

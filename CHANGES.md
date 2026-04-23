@@ -153,3 +153,65 @@ ng serve
 ```
 
 Open http://localhost:4200.
+
+---
+
+## v2 — Fixes (April 2026)
+
+Three issues reported by the user have been addressed.
+
+### 1. Single-click feedback on every action button
+Every action button (Salvar, Calcular, Cadastrar, +Adicionar Carretel,
+Registrar Produção, 🗑 Excluir, ✓ Ajustar, etc.) now toggles a
+component-level `busy` / `removing` / `adjusting` flag the moment the
+user clicks. While the request is in flight the button is `[disabled]`
+and shows an interim label ("Salvando…", "Calculando…", "…"). This
+gives instant visual feedback on the **first** click and also prevents
+duplicate submissions.
+
+Implemented across:
+- `pages/production/production.{ts,html}`
+- `pages/inventory/inventory.{ts,html}`
+- `pages/settings/settings.{ts,html}`
+- `pages/products/products.{ts,html}`
+- `pages/quote/quote.{ts,html}`
+
+### 2. Toasts now auto-dismiss after 6 s
+Each page used to keep a local `message` string visible until the user
+manually clicked `✕`. That logic has been replaced by a global
+`ToastService` (`src/app/services/toast.service.ts`):
+
+- A single signal-backed `current` toast is rendered by the root
+  `AppComponent` in a fixed bottom-right container.
+- Calling `toast.success(...)` / `toast.error(...)` schedules an
+  automatic dismissal after **6000 ms** (`AUTO_DISMISS_MS`).
+- The user may still close it early with the `✕` button.
+
+### 3. Data persistence across application restarts
+The previous default `DATABASE_URL` pointed at a Postgres container
+that only existed while `docker compose up` was running, so a refresh
+or restart wiped the database.
+
+`backend/database.py` now defaults to a **local SQLite file** stored
+right next to the backend code (`backend/3d_print.db`):
+
+```
+DATABASE_URL = sqlite:///<path-to-backend>/3d_print.db   (default)
+```
+
+The file is created automatically on first launch by
+`models.Base.metadata.create_all(...)` in `main.py`. Every printer,
+filament, spool, settings change and print job is written to that
+file and is therefore visible the next time you run the application
+locally — no Docker required.
+
+If you still want Postgres (e.g., for production), simply set the
+`DATABASE_URL` environment variable before launching `uvicorn`:
+
+```bash
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/3d_print" \
+    uvicorn main:app --reload
+```
+
+The `.gitignore` should keep `backend/3d_print.db` out of version
+control if you don't want to commit your data.

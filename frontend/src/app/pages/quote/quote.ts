@@ -2,6 +2,8 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, Filament, Printer, QuoteRequest, QuoteResult } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   standalone: true,
@@ -12,26 +14,21 @@ import { ApiService, Filament, Printer, QuoteRequest, QuoteResult } from '../../
 })
 export class Quote implements OnInit {
   private api = inject(ApiService);
+  private toast = inject(ToastService);
 
   printers: Printer[] = [];
   filaments: Filament[] = [];
 
   form: QuoteRequest = {
-    project_name: '',
-    printer_id: 0,
-    filament_id: 0,
-    quantity: 1,
-    filament_grams: 0,
-    print_time_hours: 0,
-    labor_hours: 0,
-    supplies_cost: 0,
-    packaging_cost: 0,
-    override_price_per_kg: null,
+    project_name: '', printer_id: 0, filament_id: 0, quantity: 1,
+    filament_grams: 0, print_time_hours: 0, labor_hours: 0,
+    supplies_cost: 0, packaging_cost: 0, override_price_per_kg: null,
   };
 
   result: QuoteResult | null = null;
-  message = '';
-  success = true;
+
+  calculating = false;
+  saving = false;
 
   ngOnInit() {
     this.api.listPrinters().subscribe(d => this.printers = d);
@@ -39,18 +36,18 @@ export class Quote implements OnInit {
   }
 
   calculate() {
+    if (this.calculating) return;
     if (!this.form.printer_id || !this.form.filament_id || !this.form.filament_grams) {
-      this.message = 'Preencha impressora, filamento e gramas.';
-      this.success = false;
+      this.toast.error('Preencha impressora, filamento e gramas.');
       return;
     }
-    this.api.quote(this.form).subscribe({
-      next: r => { this.result = r; this.message = ''; },
-      error: () => { this.success = false; this.message = 'Erro ao calcular orçamento.'; },
+    this.calculating = true;
+    this.api.quote(this.form).pipe(finalize(() => this.calculating = false)).subscribe({
+      next: r => { this.result = r; this.toast.success('Orçamento calculado.'); },
+      error: () => this.toast.error('Erro ao calcular orçamento.'),
     });
   }
 
-  /** Build a self-contained HTML document and print it as PDF. */
   downloadPdf() {
     if (!this.result) return;
     const r = this.result;
@@ -70,7 +67,6 @@ export class Quote implements OnInit {
 </style></head><body>
   <h1>Orçamento — Tom Studio 3D</h1>
   <small>Gerado em ${new Date().toLocaleString('pt-BR')}</small>
-
   <div class="meta">
     <div><b>Projeto:</b> ${r.project_name}</div>
     <div><b>Quantidade:</b> ${r.quantity}</div>
@@ -78,7 +74,6 @@ export class Quote implements OnInit {
     <div><b>Filamento:</b> ${r.filament}</div>
     <div><b>Preço filamento:</b> R$ ${fmt(r.price_per_kg_used)}/kg</div>
   </div>
-
   <table>
     <thead><tr><th>Componente</th><th style="text-align:right">Por unidade</th><th style="text-align:right">Total</th></tr></thead>
     <tbody>
@@ -90,35 +85,27 @@ export class Quote implements OnInit {
       <tr><td>Embalagem</td>     <td align="right">—</td>                                       <td align="right">R$ ${fmt(r.packaging_cost)}</td></tr>
       <tr class="total"><td>Subtotal</td>           <td align="right">R$ ${fmt(r.per_unit.subtotal)}</td>          <td align="right">R$ ${fmt(r.subtotal)}</td></tr>
       <tr class="total"><td>Custo final (com falha)</td><td align="right">R$ ${fmt(r.per_unit.final_cost)}</td>   <td align="right">R$ ${fmt(r.final_cost)}</td></tr>
-      <tr class="total"><td>Preço sugerido</td>     <td align="right">R$ ${fmt(r.per_unit.suggested_price)}</td>  <td align="right">R$ ${fmt(r.suggested_price)}</td></tr>
-      <tr class="total"><td>Preço marketplace</td>  <td align="right">R$ ${fmt(r.per_unit.marketplace_price)}</td><td align="right">R$ ${fmt(r.marketplace_price)}</td></tr>
     </tbody>
   </table>
-
-  <p style="margin-top:24px;font-size:12px;color:#64748b">
-    Cálculo baseado nas variáveis configuradas em "Configurações" e na planilha original
-    (taxa de falha, markup, taxa de marketplace, imposto e taxa fixa).
-  </p>
-
   <button class="noprint" onclick="window.print()" style="margin-top:20px;padding:10px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">
     Imprimir / Salvar como PDF
   </button>
 </body></html>`;
     const w = window.open('', '_blank');
-    if (!w) { alert('Pop-up bloqueado pelo navegador.'); return; }
+    if (!w) { this.toast.error('Pop-up bloqueado pelo navegador.'); return; }
     w.document.write(html);
     w.document.close();
     setTimeout(() => w.print(), 400);
   }
 
   saveAsJob() {
-    if (!this.result) return;
-    // Persist a print job uses the first spool of the chosen filament.
+    if (!this.result || this.saving) return;
+    this.saving = true;
     this.api.listSpools().subscribe(spools => {
       const match = spools.find(s => s.filament_id === this.form.filament_id);
       if (!match || !match.id) {
-        this.success = false;
-        this.message = 'Nenhum carretel deste filamento em estoque. Cadastre em "Filamentos".';
+        this.saving = false;
+        this.toast.error('Nenhum carretel deste filamento em estoque. Cadastre em "Filamentos".');
         return;
       }
       this.api.createJob({
@@ -132,9 +119,9 @@ export class Quote implements OnInit {
         supplies_cost: this.form.supplies_cost,
         packaging_cost: this.form.packaging_cost,
         sold_value: 0,
-      }).subscribe({
-        next: () => { this.success = true; this.message = 'Orçamento salvo como produção e estoque deduzido.'; },
-        error: (e) => { this.success = false; this.message = e?.error?.detail || 'Falha ao salvar produção.'; },
+      }).pipe(finalize(() => this.saving = false)).subscribe({
+        next: () => this.toast.success('Orçamento salvo como produção e estoque deduzido.'),
+        error: (e) => this.toast.error(e?.error?.detail || 'Falha ao salvar produção.'),
       });
     });
   }

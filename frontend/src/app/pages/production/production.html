@@ -35,12 +35,9 @@
       <input class="input" type="number" step="0.5" [(ngModel)]="form.sold_value"></div>
   </div>
 
-  <button class="btn btn-primary" style="margin-top:16px;" (click)="produce()">Registrar Produção</button>
-
-  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
-    <span>{{ message }}</span>
-    <button class="btn btn-icon" (click)="dismiss()">✕</button>
-  </div>
+  <button class="btn btn-primary" style="margin-top:16px;" (click)="produce()" [disabled]="busy">
+    {{ busy ? 'Salvando…' : 'Registrar Produção' }}
+  </button>
 </div>
 
 <div class="card" style="margin-top:24px;">
@@ -71,7 +68,11 @@
         <td [class.positive]="(j.profit_pct||0) >= 0" [class.danger]="(j.profit_pct||0) < 0">
           {{ j.profit_pct !== null ? ((j.profit_pct! * 100) | number:'1.1-1') + '%' : '—' }}
         </td>
-        <td><button class="btn btn-danger" (click)="remove(j.id)">🗑</button></td>
+        <td>
+          <button class="btn btn-danger" (click)="remove(j.id)" [disabled]="removing[j.id!]">
+            {{ removing[j.id!] ? '…' : '🗑' }}
+          </button>
+        </td>
       </tr>
       <tr *ngIf="!jobs.length"><td colspan="14" class="muted" style="text-align:center;padding:24px;">Nenhuma produção ainda.</td></tr>
     </tbody>

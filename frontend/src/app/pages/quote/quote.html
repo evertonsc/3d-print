@@ -46,14 +46,11 @@
   </div>
 
   <div style="margin-top:16px; display:flex; gap:12px;">
-    <button class="btn btn-primary" (click)="calculate()">Calcular</button>
+    <button class="btn btn-primary" (click)="calculate()" [disabled]="calculating">{{ calculating ? 'Calculando…' : 'Calcular' }}</button>
     <button class="btn btn-primary" *ngIf="result" (click)="downloadPdf()">⬇ Baixar Orçamento (PDF)</button>
-    <button class="btn" style="background:#0f172a;color:#fff" *ngIf="result" (click)="saveAsJob()">Salvar como Produção</button>
+    <button class="btn" style="background:#0f172a;color:#fff" *ngIf="result" (click)="saveAsJob()" [disabled]="saving">{{ saving ? 'Salvando…' : 'Salvar como Produção' }}</button>
   </div>
 
-  <div *ngIf="message" class="alert" [class.alert-success]="success" [class.alert-warning]="!success">
-    {{ message }}
-  </div>
 </div>
 
 <div class="card" style="margin-top:24px;" *ngIf="result">
