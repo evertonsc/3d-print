@@ -95,3 +95,7 @@ html, body {
 .alert-success { background: var(--primary-soft); color: #14532d; }
 .alert-info    { background: var(--info-bg); color: #1e3a8a; border-left: 4px solid var(--info-border); }
 .alert-warning { background: var(--warning-bg); color: #78350f; border-left: 4px solid var(--warning-border); }
+
+/* Required field marker */
+.required { color: var(--danger); font-weight: 700; margin-left: 2px; }
+

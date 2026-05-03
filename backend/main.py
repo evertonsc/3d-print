@@ -460,6 +460,79 @@ def create_job(payload: schemas.PrintJobIn, db: Session = Depends(get_db)):
     return _job_dict(job)
 
 
+@app.put("/print-jobs/{jid}")
+def update_job(jid: int, payload: schemas.PrintJobIn, db: Session = Depends(get_db)):
+    """Update an existing print job. Adjusts stock by the delta of grams."""
+    j = db.get(models.PrintJob, jid)
+    if not j: raise HTTPException(404, "Job not found")
+    settings = db.query(models.Settings).first()
+    printer  = db.get(models.Printer, payload.printer_id)
+    spool    = db.get(models.FilamentInventory, payload.filament_inventory_id)
+    if not settings: raise HTTPException(500, "Settings not configured")
+    if not printer:  raise HTTPException(404, "Printer not found")
+    if not spool:    raise HTTPException(404, "Spool not found")
+
+    qty = max(1, payload.quantity)
+    new_total_grams = (payload.filament_grams or 0) * qty
+    old_spool = db.get(models.FilamentInventory, j.filament_inventory_id)
+
+    # Refund old stock, then deduct new.
+    if old_spool:
+        old_spool.quantity_grams = (old_spool.quantity_grams or 0) + (j.filament_grams or 0)
+    if (spool.quantity_grams or 0) < new_total_grams:
+        # Roll back the refund-only operation by re-deducting before raising.
+        if old_spool:
+            old_spool.quantity_grams = (old_spool.quantity_grams or 0) - (j.filament_grams or 0)
+        raise HTTPException(400, f"Estoque insuficiente no carretel. Necessário: {new_total_grams}g")
+    spool.quantity_grams = (spool.quantity_grams or 0) - new_total_grams
+
+    # Recompute cost using the chosen spool's price.
+    if spool.purchase_price and spool.quantity_grams is not None:
+        catalogue = db.get(models.Filament, spool.filament_id) if spool.filament_id else None
+        spool_kg = (catalogue.spool_weight_kg if catalogue else 1.0) or 1.0
+        price_per_kg = spool.purchase_price / spool_kg
+    else:
+        catalogue = db.get(models.Filament, spool.filament_id) if spool.filament_id else None
+        price_per_kg = catalogue.price_per_kg if catalogue else 0.0
+
+    breakdown = compute(
+        grams=new_total_grams,
+        print_time_hours=(payload.print_time_hours or 0) * qty,
+        labor_hours=(payload.labor_hours or 0) * qty,
+        supplies_cost=(payload.supplies_cost or 0) * qty,
+        packaging_cost=(payload.packaging_cost or 0) * qty,
+        filament_price_per_kg=price_per_kg,
+        printer_avg_power_kwh=printer.avg_power_kwh,
+        printer_depreciation_per_hour=printer.depreciation_per_hour,
+        settings=settings,
+        sold_value=payload.sold_value,
+        quantity=qty,
+    )
+
+    j.date = payload.date or j.date
+    j.project_name = payload.project_name
+    j.printer_id = payload.printer_id
+    j.filament_inventory_id = payload.filament_inventory_id
+    j.quantity = qty
+    j.filament_grams = new_total_grams
+    j.print_time_hours = (payload.print_time_hours or 0) * qty
+    j.labor_hours = (payload.labor_hours or 0) * qty
+    j.supplies_cost = (payload.supplies_cost or 0) * qty
+    j.packaging_cost = (payload.packaging_cost or 0) * qty
+    j.filament_price_per_kg_snapshot = breakdown.filament_price_per_kg_snapshot
+    j.filament_cost = breakdown.filament_cost
+    j.energy_cost = breakdown.energy_cost
+    j.depreciation_cost = breakdown.depreciation_cost
+    j.labor_cost = breakdown.labor_cost
+    j.subtotal = breakdown.subtotal
+    j.final_cost = breakdown.final_cost
+    j.suggested_price = breakdown.suggested_price
+    j.marketplace_price = breakdown.marketplace_price
+    j.sold_value = payload.sold_value or 0
+    db.commit(); db.refresh(j)
+    return _job_dict(j)
+
+
 @app.delete("/print-jobs/{jid}")
 def delete_job(jid: int, db: Session = Depends(get_db)):
     j = db.get(models.PrintJob, jid)

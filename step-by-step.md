@@ -1,3 +1,5 @@
+cd "Desktop\Tom\Programming\Real proj\3d-print"
+
 # How to run Back-End
 cd backend/
 1st: python -m venv venv

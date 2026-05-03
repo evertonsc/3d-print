@@ -9,12 +9,16 @@ Per-unit columns from the spreadsheet, expressed here as functions:
     M  labor_cost        = labor_hours * settings.labor_cost_per_hour
     N  subtotal          = J + K + L + M + supplies + packaging
     O  final_cost        = N * (1 + failure_rate/100)
-    P  suggested_price   = O * markup            (Q5 in the sheet, default 1.5)
+    P  suggested_price   = O * 2.8           (180% ABOVE final cost)
     Q  marketplace_price = P / (1 - marketplace_fee - tax) + fixed_fee
     U  profit_pct        = (sold - O) / O
 """
 from dataclasses import dataclass, asdict
 from typing import Optional
+
+
+# Suggested price is 180% ABOVE the final cost: price = cost + 180%*cost = cost * 2.8
+SUGGESTED_PRICE_MULTIPLIER = 2.8
 
 
 @dataclass
@@ -65,7 +69,8 @@ def compute(
     subtotal = filament_cost + energy_cost + depreciation_cost + labor_cost + supplies_cost + packaging_cost
     final_cost = subtotal * (1.0 + (settings.failure_rate or 0.0) / 100.0)
 
-    suggested_price = final_cost * (settings.markup or 1.5)
+    # Requirement: suggested price must be 180% ABOVE final cost.
+    suggested_price = final_cost * SUGGESTED_PRICE_MULTIPLIER
 
     fee_factor = 1.0 - (settings.marketplace_fee or 0.0) - (settings.tax or 0.0)
     if fee_factor <= 0:

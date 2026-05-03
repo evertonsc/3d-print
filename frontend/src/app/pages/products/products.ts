@@ -1,9 +1,21 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ApiService } from '../../services/api.service';
+import { ApiService, Filament, Printer } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { finalize } from 'rxjs/operators';
+
+interface ProductRow {
+  id?: number;
+  name: string;
+  printer_id?: number | null;
+  filament_id?: number | null;
+  filament_grams: number;
+  print_time_hours: number;
+  labor_hours: number;
+  supplies_cost: number;
+  packaging_cost: number;
+}
 
 @Component({
   standalone: true,
@@ -15,41 +27,78 @@ import { finalize } from 'rxjs/operators';
 export class Products implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
-  name = '';
-  material_grams: number | null = null;
-  print_time_hours: number | null = null;
-  material_cost_per_gram: number | null = null;
+  printers: Printer[] = [];
+  filaments: Filament[] = [];
+  products: ProductRow[] = [];
 
-  products: any[] = [];
   busy = false;
+  removing: Record<number, boolean> = {};
+  editingId: number | null = null;
 
-  ngOnInit() { this.load(); }
+  form: ProductRow = this.empty();
 
-  load() { this.api.listProducts().subscribe(data => this.products = data); }
+  ngOnInit() {
+    this.api.listPrinters().subscribe(d => { this.printers = d; this.cdr.detectChanges(); });
+    this.api.listFilaments().subscribe(d => { this.filaments = d; this.cdr.detectChanges(); });
+    this.load();
+  }
 
-  create() {
+  load() {
+    this.api.listProducts().subscribe(data => { this.products = data || []; this.cdr.detectChanges(); });
+  }
+
+  save() {
     if (this.busy) return;
-    if (!this.name || this.material_grams == null) {
-      this.toast.error('Preencha nome e gramas de material.');
+    if (!this.form.name || !this.form.filament_grams) {
+      this.toast.error('Preencha os campos obrigatórios (*).');
       return;
     }
     this.busy = true;
-    this.api.createProduct({
-      name: this.name,
-      material_grams: this.material_grams!,
-      print_time_hours: this.print_time_hours!,
-      material_cost_per_gram: this.material_cost_per_gram!,
-    }).pipe(finalize(() => this.busy = false)).subscribe({
-      next: () => { this.toast.success('Produto criado com sucesso!'); this.clear(); this.load(); },
-      error: () => this.toast.error('Erro ao criar produto'),
+    const op = this.editingId != null
+      ? this.api.updateProduct(this.editingId, this.form)
+      : this.api.createProduct(this.form);
+    op.pipe(finalize(() => { this.busy = false; this.cdr.detectChanges(); })).subscribe({
+      next: () => {
+        this.toast.success(this.editingId != null ? 'Produto atualizado.' : 'Produto criado.');
+        this.cancel();
+        this.load();
+      },
+      error: () => this.toast.error('Erro ao salvar produto.'),
     });
   }
 
-  clear() {
-    this.name = '';
-    this.material_grams = null;
-    this.print_time_hours = null;
-    this.material_cost_per_gram = null;
+  edit(p: ProductRow) {
+    this.editingId = p.id ?? null;
+    this.form = { ...p };
+    this.cdr.detectChanges();
+  }
+
+  cancel() {
+    this.editingId = null;
+    this.form = this.empty();
+    this.cdr.detectChanges();
+  }
+
+  remove(id?: number) {
+    if (!id || this.removing[id]) return;
+    if (!confirm('Excluir este produto?')) return;
+    this.removing[id] = true;
+    this.api.deleteProduct(id).pipe(finalize(() => { this.removing[id] = false; this.cdr.detectChanges(); })).subscribe({
+      next: () => { this.toast.success('Produto excluído.'); this.load(); },
+      error: () => this.toast.error('Erro ao excluir.'),
+    });
+  }
+
+  printerName(id?: number | null) { return this.printers.find(p => p.id === id)?.name || '—'; }
+  filamentName(id?: number | null) { return this.filaments.find(f => f.id === id)?.name || '—'; }
+
+  private empty(): ProductRow {
+    return {
+      name: '', printer_id: null, filament_id: null,
+      filament_grams: 0, print_time_hours: 0, labor_hours: 0,
+      supplies_cost: 0, packaging_cost: 0,
+    };
   }
 }

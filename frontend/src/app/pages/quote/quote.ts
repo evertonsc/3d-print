@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, Filament, Printer, QuoteRequest, QuoteResult } from '../../services/api.service';
@@ -15,6 +15,7 @@ import { finalize } from 'rxjs/operators';
 export class Quote implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   printers: Printer[] = [];
   filaments: Filament[] = [];
@@ -31,19 +32,19 @@ export class Quote implements OnInit {
   saving = false;
 
   ngOnInit() {
-    this.api.listPrinters().subscribe(d => this.printers = d);
-    this.api.listFilaments().subscribe(d => this.filaments = d);
+    this.api.listPrinters().subscribe(d => { this.printers = d; this.cdr.detectChanges(); });
+    this.api.listFilaments().subscribe(d => { this.filaments = d; this.cdr.detectChanges(); });
   }
 
   calculate() {
     if (this.calculating) return;
-    if (!this.form.printer_id || !this.form.filament_id || !this.form.filament_grams) {
-      this.toast.error('Preencha impressora, filamento e gramas.');
+    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_id || !this.form.filament_grams) {
+      this.toast.error('Preencha os campos obrigatórios (*).');
       return;
     }
     this.calculating = true;
-    this.api.quote(this.form).pipe(finalize(() => this.calculating = false)).subscribe({
-      next: r => { this.result = r; this.toast.success('Orçamento calculado.'); },
+    this.api.quote(this.form).pipe(finalize(() => { this.calculating = false; this.cdr.detectChanges(); })).subscribe({
+      next: r => { this.result = r; this.toast.success('Orçamento calculado.'); this.cdr.detectChanges(); },
       error: () => this.toast.error('Erro ao calcular orçamento.'),
     });
   }
@@ -85,6 +86,7 @@ export class Quote implements OnInit {
       <tr><td>Embalagem</td>     <td align="right">—</td>                                       <td align="right">R$ ${fmt(r.packaging_cost)}</td></tr>
       <tr class="total"><td>Subtotal</td>           <td align="right">R$ ${fmt(r.per_unit.subtotal)}</td>          <td align="right">R$ ${fmt(r.subtotal)}</td></tr>
       <tr class="total"><td>Custo final (com falha)</td><td align="right">R$ ${fmt(r.per_unit.final_cost)}</td>   <td align="right">R$ ${fmt(r.final_cost)}</td></tr>
+      <tr class="total"><td>Preço sugerido (180% acima)</td><td align="right">R$ ${fmt(r.per_unit.suggested_price)}</td><td align="right">R$ ${fmt(r.suggested_price)}</td></tr>
     </tbody>
   </table>
   <button class="noprint" onclick="window.print()" style="margin-top:20px;padding:10px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">
@@ -98,31 +100,67 @@ export class Quote implements OnInit {
     setTimeout(() => w.print(), 400);
   }
 
+  /**
+   * Saves the current quote as a Production (PrintJob).
+   * Picks the spool with the most grams matching the chosen filament,
+   * or — if no spool exists — auto-creates one from the catalogue
+   * filament so the user always gets a saved production.
+   */
   saveAsJob() {
-    if (!this.result || this.saving) return;
+    if (this.saving) return;
+    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_id || !this.form.filament_grams) {
+      this.toast.error('Preencha os campos obrigatórios (*) antes de salvar.');
+      return;
+    }
     this.saving = true;
+
+    const totalGramsNeeded = (this.form.filament_grams || 0) * (this.form.quantity || 1);
+
     this.api.listSpools().subscribe(spools => {
-      const match = spools.find(s => s.filament_id === this.form.filament_id);
-      if (!match || !match.id) {
-        this.saving = false;
-        this.toast.error('Nenhum carretel deste filamento em estoque. Cadastre em "Filamentos".');
-        return;
+      // Prefer spools of the same filament with enough stock; fall back to most grams; else any.
+      const sameFilament = spools.filter(s => s.filament_id === this.form.filament_id);
+      let chosen = sameFilament
+        .filter(s => (s.quantity_grams ?? 0) >= totalGramsNeeded)
+        .sort((a, b) => (b.quantity_grams ?? 0) - (a.quantity_grams ?? 0))[0];
+      if (!chosen) chosen = sameFilament.sort((a, b) => (b.quantity_grams ?? 0) - (a.quantity_grams ?? 0))[0];
+
+      const proceed = (spoolId: number) => {
+        this.api.createJob({
+          project_name: this.form.project_name,
+          printer_id: this.form.printer_id,
+          filament_inventory_id: spoolId,
+          quantity: this.form.quantity,
+          filament_grams: this.form.filament_grams,
+          print_time_hours: this.form.print_time_hours,
+          labor_hours: this.form.labor_hours,
+          supplies_cost: this.form.supplies_cost,
+          packaging_cost: this.form.packaging_cost,
+          sold_value: 0,
+        }).pipe(finalize(() => { this.saving = false; this.cdr.detectChanges(); })).subscribe({
+          next: () => this.toast.success('Orçamento salvo como produção.'),
+          error: (e) => this.toast.error(e?.error?.detail || 'Falha ao salvar produção.'),
+        });
+      };
+
+      if (chosen && chosen.id) {
+        proceed(chosen.id);
+      } else {
+        // Auto-create a placeholder spool so saving always works.
+        const fil = this.filaments.find(f => f.id === this.form.filament_id);
+        this.api.createSpool({
+          filament_id: this.form.filament_id,
+          color: fil?.type || 'Auto',
+          brand: fil?.manufacturer || '',
+          type: fil?.type || '',
+          source: 'Criado pelo Orçamento',
+          purchase_date: new Date().toISOString(),
+          purchase_price: fil?.spool_price || 0,
+          quantity_grams: Math.max(totalGramsNeeded, (fil?.spool_weight_kg || 1) * 1000),
+        }).subscribe({
+          next: (s) => proceed(s.id!),
+          error: () => { this.saving = false; this.toast.error('Falha ao preparar carretel para a produção.'); },
+        });
       }
-      this.api.createJob({
-        project_name: this.form.project_name,
-        printer_id: this.form.printer_id,
-        filament_inventory_id: match.id,
-        quantity: this.form.quantity,
-        filament_grams: this.form.filament_grams,
-        print_time_hours: this.form.print_time_hours,
-        labor_hours: this.form.labor_hours,
-        supplies_cost: this.form.supplies_cost,
-        packaging_cost: this.form.packaging_cost,
-        sold_value: 0,
-      }).pipe(finalize(() => this.saving = false)).subscribe({
-        next: () => this.toast.success('Orçamento salvo como produção e estoque deduzido.'),
-        error: (e) => this.toast.error(e?.error?.detail || 'Falha ao salvar produção.'),
-      });
     });
   }
 }

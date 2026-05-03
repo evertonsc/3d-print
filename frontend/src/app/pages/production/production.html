@@ -5,24 +5,24 @@
   </div>
 
   <div class="form-grid">
-    <div><label class="label">Projeto</label>
-      <input class="input" [(ngModel)]="form.project_name" placeholder="Vaso Voronoi"></div>
-    <div><label class="label">Impressora</label>
-      <select class="input" [(ngModel)]="form.printer_id">
+    <div><label class="label">Projeto <span class="required">*</span></label>
+      <input class="input" required [(ngModel)]="form.project_name" placeholder="Vaso Voronoi"></div>
+    <div><label class="label">Impressora <span class="required">*</span></label>
+      <select class="input" required [(ngModel)]="form.printer_id">
         <option [ngValue]="0">Selecione...</option>
         <option *ngFor="let p of printers" [ngValue]="p.id">{{ p.name }}</option>
       </select>
     </div>
-    <div><label class="label">Carretel</label>
-      <select class="input" [(ngModel)]="form.filament_inventory_id">
+    <div><label class="label">Carretel <span class="required">*</span></label>
+      <select class="input" required [(ngModel)]="form.filament_inventory_id">
         <option [ngValue]="0">Selecione...</option>
         <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
       </select>
     </div>
-    <div><label class="label">Quantidade</label>
-      <input class="input" type="number" min="1" [(ngModel)]="form.quantity"></div>
-    <div><label class="label">Gramas / unidade</label>
-      <input class="input" type="number" [(ngModel)]="form.filament_grams"></div>
+    <div><label class="label">Quantidade <span class="required">*</span></label>
+      <input class="input" type="number" min="1" required [(ngModel)]="form.quantity"></div>
+    <div><label class="label">Gramas / unidade <span class="required">*</span></label>
+      <input class="input" type="number" required [(ngModel)]="form.filament_grams"></div>
     <div><label class="label">Tempo / unidade (h)</label>
       <input class="input" type="number" step="0.1" [(ngModel)]="form.print_time_hours"></div>
     <div><label class="label">Trabalho / unidade (h)</label>
@@ -35,9 +35,12 @@
       <input class="input" type="number" step="0.5" [(ngModel)]="form.sold_value"></div>
   </div>
 
-  <button class="btn btn-primary" style="margin-top:16px;" (click)="produce()" [disabled]="busy">
-    {{ busy ? 'Salvando…' : 'Registrar Produção' }}
-  </button>
+  <div style="margin-top:16px; display:flex; gap:12px;">
+    <button class="btn btn-primary" (click)="produce()" [disabled]="busy">
+      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar alterações' : 'Registrar Produção') }}
+    </button>
+    <button class="btn" *ngIf="editingId != null" (click)="cancelEdit()">Cancelar</button>
+  </div>
 </div>
 
 <div class="card" style="margin-top:24px;">
@@ -48,7 +51,7 @@
         <th>Data</th><th>Projeto</th><th>Qtd</th><th>g</th>
         <th>Custo Filam.</th><th>Energia</th><th>Dep.</th><th>Trab.</th>
         <th>Custo Final</th><th>Sugerido</th><th>Marketplace</th>
-        <th>Vendido</th><th>Lucro %</th><th></th>
+        <th>Vendido</th><th>Lucro %</th><th>Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -69,6 +72,7 @@
           {{ j.profit_pct !== null ? ((j.profit_pct! * 100) | number:'1.1-1') + '%' : '—' }}
         </td>
         <td>
+          <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(j)">✎</button>
           <button class="btn btn-danger" (click)="remove(j.id)" [disabled]="removing[j.id!]">
             {{ removing[j.id!] ? '…' : '🗑' }}
           </button>

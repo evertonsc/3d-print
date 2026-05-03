@@ -165,6 +165,8 @@ export class ApiService {
   // ---- Products ----
   listProducts(): Observable<any[]> { return this.http.get<any[]>(`${this.base}/products`); }
   createProduct(p: any) { return this.http.post(`${this.base}/products`, p); }
+  updateProduct(id: number, p: any) { return this.http.put(`${this.base}/products/${id}`, p); }
+  deleteProduct(id: number) { return this.http.delete(`${this.base}/products/${id}`); }
 
   // ---- Quote / Orçamento ----
   quote(q: QuoteRequest): Observable<QuoteResult> { return this.http.post<QuoteResult>(`${this.base}/quote`, q); }
@@ -172,6 +174,7 @@ export class ApiService {
   // ---- Print jobs ----
   listJobs(): Observable<PrintJob[]> { return this.http.get<PrintJob[]>(`${this.base}/print-jobs`); }
   createJob(j: PrintJobRequest) { return this.http.post<PrintJob>(`${this.base}/print-jobs`, j); }
+  updateJob(id: number, j: PrintJobRequest) { return this.http.put<PrintJob>(`${this.base}/print-jobs/${id}`, j); }
   deleteJob(id: number) { return this.http.delete(`${this.base}/print-jobs/${id}`); }
 
   // ---- DRE ----
