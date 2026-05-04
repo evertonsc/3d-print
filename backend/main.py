@@ -216,6 +216,23 @@ def _inv_dict(i: models.FilamentInventory) -> dict:
         "purchase_date": i.purchase_date.isoformat() if i.purchase_date else None,
         "purchase_price": i.purchase_price,
         "quantity_grams": i.quantity_grams,
+        "manufacturer": i.manufacturer,
+        "diameter_mm": i.diameter_mm,
+        "density": i.density,
+        "nozzle_temp": i.nozzle_temp,
+        "bed_temp": i.bed_temp,
+    }
+
+
+def _stock_dict(s: models.StockItem) -> dict:
+    return {
+        "id": s.id,
+        "category": s.category,
+        "description": s.description,
+        "valor": s.valor,
+        "purchased_qty": s.purchased_qty,
+        "available_qty": s.available_qty,
+        "unit_price": round(s.unit_price, 4),
     }
 
 
@@ -587,3 +604,38 @@ def dre(db: Session = Depends(get_db)):
 @app.get("/stock")
 def stock(db: Session = Depends(get_db)):
     return [_inv_dict(i) for i in db.query(models.FilamentInventory).all()]
+
+
+# ============================================================
+# Stock items — Embalagens & Insumos
+# ============================================================
+@app.get("/stock-items")
+def list_stock_items(category: Optional[str] = None, db: Session = Depends(get_db)):
+    q = db.query(models.StockItem)
+    if category:
+        q = q.filter(models.StockItem.category == category)
+    return [_stock_dict(s) for s in q.all()]
+
+
+@app.post("/stock-items")
+def create_stock_item(payload: schemas.StockItemIn, db: Session = Depends(get_db)):
+    s = models.StockItem(**payload.dict())
+    db.add(s); db.commit(); db.refresh(s)
+    return _stock_dict(s)
+
+
+@app.put("/stock-items/{sid}")
+def update_stock_item(sid: int, payload: schemas.StockItemIn, db: Session = Depends(get_db)):
+    s = db.get(models.StockItem, sid)
+    if not s: raise HTTPException(404, "Stock item not found")
+    for k, v in payload.dict().items(): setattr(s, k, v)
+    db.commit(); db.refresh(s)
+    return _stock_dict(s)
+
+
+@app.delete("/stock-items/{sid}")
+def delete_stock_item(sid: int, db: Session = Depends(get_db)):
+    s = db.get(models.StockItem, sid)
+    if not s: raise HTTPException(404, "Stock item not found")
+    db.delete(s); db.commit()
+    return {"ok": True}

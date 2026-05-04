@@ -45,36 +45,3 @@
     </tbody>
   </table>
 </div>
-
-<div class="card" style="margin-top:24px;">
-  <h2>Catálogo de Filamentos</h2>
-  <div class="form-grid">
-    <div><label class="label">Nome <span class="required">*</span></label>           <input class="input" required [(ngModel)]="newFilament.name"></div>
-    <div><label class="label">Fabricante</label>                                     <input class="input" [(ngModel)]="newFilament.manufacturer"></div>
-    <div><label class="label">Tipo <span class="required">*</span></label>           <input class="input" required [(ngModel)]="newFilament.type"></div>
-    <div><label class="label">Diâmetro (mm) <span class="required">*</span></label>  <input class="input" type="number" required step="0.01" [(ngModel)]="newFilament.diameter_mm"></div>
-    <div><label class="label">Preço carretel (R$) <span class="required">*</span></label><input class="input" type="number" required [(ngModel)]="newFilament.spool_price"></div>
-    <div><label class="label">Peso carretel (kg) <span class="required">*</span></label><input class="input" type="number" required step="0.1" [(ngModel)]="newFilament.spool_weight_kg"></div>
-    <div><label class="label">Densidade (g/cm³)</label>                              <input class="input" type="number" step="0.01" [(ngModel)]="newFilament.density"></div>
-  </div>
-  <div style="margin-top:12px; display:flex; gap:12px;">
-    <button class="btn btn-primary" (click)="saveFilament()" [disabled]="busyFilament">
-      {{ busyFilament ? 'Salvando…' : (editingFilamentId != null ? 'Salvar alterações' : '+ Adicionar') }}
-    </button>
-    <button class="btn" *ngIf="editingFilamentId != null" (click)="cancelFilament()">Cancelar</button>
-  </div>
-  <table class="table" style="margin-top:16px;">
-    <thead><tr><th>Nome</th><th>Tipo</th><th>Preço carretel</th><th>R$/kg</th><th>Ações</th></tr></thead>
-    <tbody>
-      <tr *ngFor="let f of filaments">
-        <td>{{f.name}}</td><td>{{f.type}}</td><td>R$ {{f.spool_price | number:'1.2-2'}}</td>
-        <td>R$ {{f.price_per_kg | number:'1.2-2'}}</td>
-        <td>
-          <button class="btn btn-primary btn-icon" title="Editar" (click)="editFilament(f)">✎</button>
-          <button class="btn btn-danger" (click)="delFilament(f.id)" [disabled]="removingFilament[f.id!]">{{ removingFilament[f.id!] ? '…' : '🗑' }}</button>
-        </td>
-      </tr>
-      <tr *ngIf="!filaments.length"><td colspan="5" class="muted" style="text-align:center;padding:16px;">Nenhum filamento cadastrado.</td></tr>
-    </tbody>
-  </table>
-</div>

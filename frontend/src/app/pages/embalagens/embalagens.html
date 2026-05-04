@@ -1,0 +1,50 @@
+<div class="card">
+  <div class="card-header">
+    <h2>{{ title }}</h2>
+    <small class="muted">Controle de {{ title.toLowerCase() }} — descrição, valor, quantidade comprada e estoque disponível.</small>
+  </div>
+
+  <div class="form-grid">
+    <div><label class="label">Descrição <span class="required">*</span></label>
+      <input class="input" required [(ngModel)]="form.description" placeholder="Caixa 10x10x5..."></div>
+    <div><label class="label">Valor (R$) <span class="required">*</span></label>
+      <input class="input" type="number" required step="0.01" [(ngModel)]="form.valor"></div>
+    <div><label class="label">Quantidade comprada <span class="required">*</span></label>
+      <input class="input" type="number" required step="1" [(ngModel)]="form.purchased_qty"></div>
+    <div><label class="label">Preço unitário</label>
+      <input class="input" type="text" readonly [value]="unitPrice() | number:'1.2-4'"></div>
+    <div><label class="label">Estoque disponível <span class="required">*</span></label>
+      <input class="input" type="number" required step="1" [(ngModel)]="form.available_qty"></div>
+  </div>
+
+  <div style="margin-top:12px; display:flex; gap:12px;">
+    <button class="btn btn-primary" (click)="save()" [disabled]="busy">
+      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar alterações' : '+ Adicionar') }}
+    </button>
+    <button class="btn" *ngIf="editingId != null" (click)="cancel()">Cancelar</button>
+  </div>
+
+  <h3 style="margin-top:24px;">Itens cadastrados</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Descrição</th><th>Valor</th><th>Qtd comprada</th>
+        <th>Preço unitário</th><th>Estoque disponível</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let s of items">
+        <td>{{ s.description }}</td>
+        <td>R$ {{ s.valor | number:'1.2-2' }}</td>
+        <td>{{ s.purchased_qty | number:'1.0-2' }}</td>
+        <td>R$ {{ s.unit_price | number:'1.2-4' }}</td>
+        <td>{{ s.available_qty | number:'1.0-2' }}</td>
+        <td>
+          <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(s)">✎</button>
+          <button class="btn btn-danger" (click)="remove(s.id)" [disabled]="removing[s.id!]">{{ removing[s.id!] ? '…' : '🗑' }}</button>
+        </td>
+      </tr>
+      <tr *ngIf="!items.length"><td colspan="6" class="muted" style="text-align:center;padding:24px;">Nenhum item cadastrado.</td></tr>
+    </tbody>
+  </table>
+</div>

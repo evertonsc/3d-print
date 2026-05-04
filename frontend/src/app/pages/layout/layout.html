@@ -1,21 +1,52 @@
-<div class="layout">
+<div class="layout" [class.collapsed]="collapsed">
   <aside class="sidebar">
-    <div class="logo">
-      <img src="assets/logo.png" alt="Tom Studio 3D" />
-      <span>Tom Studio 3D</span>
+    <div class="sidebar-top">
+      <button class="hamburger" type="button" (click)="toggle()" aria-label="Alternar menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="logo" *ngIf="!collapsed">
+        <img src="assets/logo.png" alt="Tom Studio 3D" />
+        <span>Tom Studio 3D</span>
+      </div>
     </div>
 
     <nav>
-      <a routerLink="/"           routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">🏠 Home</a>
-      <a routerLink="/dashboard"  routerLinkActive="active">📊 Dashboard</a>
-      <a routerLink="/quote"      routerLinkActive="active">🧾 Orçamento</a>
-      <a routerLink="/production" routerLinkActive="active">⚙️ Produção</a>
-      <a routerLink="/inventory"  routerLinkActive="active">🗃️ Filamentos</a>
-      <a routerLink="/products"   routerLinkActive="active">📦 Produtos</a>
-      <a routerLink="/settings"   routerLinkActive="active">🛠️ Configurações</a>
+      <a routerLink="/"           routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" title="Home">
+        <span class="ico">🏠</span><span class="lbl" *ngIf="!collapsed">Home</span>
+      </a>
+      <a routerLink="/dashboard"  routerLinkActive="active" title="Dashboard">
+        <span class="ico">📊</span><span class="lbl" *ngIf="!collapsed">Dashboard</span>
+      </a>
+      <a routerLink="/quote"      routerLinkActive="active" title="Orçamento">
+        <span class="ico">🧾</span><span class="lbl" *ngIf="!collapsed">Orçamento</span>
+      </a>
+      <a routerLink="/production" routerLinkActive="active" title="Produção">
+        <span class="ico">⚙️</span><span class="lbl" *ngIf="!collapsed">Produção</span>
+      </a>
+
+      <!-- Materiais (parent) -->
+      <div class="group" [class.open]="materiaisOpen || isMateriaisActive()">
+        <button type="button" class="group-trigger" (click)="materiaisOpen = !materiaisOpen" title="Materiais">
+          <span class="ico">🧰</span>
+          <span class="lbl" *ngIf="!collapsed">Materiais</span>
+          <span class="caret" *ngIf="!collapsed">{{ (materiaisOpen || isMateriaisActive()) ? '▾' : '▸' }}</span>
+        </button>
+        <div class="children" *ngIf="!collapsed && (materiaisOpen || isMateriaisActive())">
+          <a routerLink="/materiais/embalagens" routerLinkActive="active">📦 Embalagens</a>
+          <a routerLink="/materiais/filamentos" routerLinkActive="active">🧵 Filamentos</a>
+          <a routerLink="/materiais/insumos"    routerLinkActive="active">🧪 Insumos</a>
+        </div>
+      </div>
+
+      <a routerLink="/products"   routerLinkActive="active" title="Produtos">
+        <span class="ico">📦</span><span class="lbl" *ngIf="!collapsed">Produtos</span>
+      </a>
+      <a routerLink="/settings"   routerLinkActive="active" title="Configurações">
+        <span class="ico">🛠️</span><span class="lbl" *ngIf="!collapsed">Configurações</span>
+      </a>
     </nav>
 
-    <div class="user">
+    <div class="user" *ngIf="!collapsed">
       <div class="avatar">T</div>
       <div class="user-info">
         <strong>Tom</strong>

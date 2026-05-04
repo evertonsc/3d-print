@@ -1,7 +1,7 @@
 import { Component, ChangeDetectorRef, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ApiService, Filament, FilamentSpool } from '../../services/api.service';
+import { ApiService, FilamentSpool } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { finalize } from 'rxjs/operators';
 
@@ -20,7 +20,6 @@ export class Inventory implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   spools: FilamentSpool[] = [];
-  filaments: Filament[] = [];
   lowStock: FilamentSpool[] = [];
   threshold = LOW_STOCK_GRAMS;
 
@@ -32,10 +31,7 @@ export class Inventory implements OnInit {
   form: FilamentSpool = this.emptyForm();
   adjust: { [id: number]: number } = {};
 
-  ngOnInit() {
-    this.load();
-    this.api.listFilaments().subscribe(d => { this.filaments = d; this.cdr.detectChanges(); });
-  }
+  ngOnInit() { this.load(); }
 
   load() {
     this.api.listSpools().subscribe(d => {
@@ -104,9 +100,12 @@ export class Inventory implements OnInit {
 
   private emptyForm(): FilamentSpool {
     return {
-      filament_id: null, color: '', brand: '', type: 'PLA', source: '',
+      filament_id: null,
+      brand: '', type: 'PLA', color: '', source: '',
       purchase_date: new Date().toISOString().substring(0, 10),
       purchase_price: 0, quantity_grams: 1000,
+      manufacturer: '', diameter_mm: 1.75, density: 1.24,
+      nozzle_temp: 210, bed_temp: 60,
     };
   }
 }

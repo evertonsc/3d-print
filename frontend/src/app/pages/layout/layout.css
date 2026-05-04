@@ -7,22 +7,47 @@
   width: 240px;
   background: var(--sidebar);
   color: #fff;
-  padding: 20px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
+  transition: width .2s ease;
 }
+
+.layout.collapsed .sidebar { width: 64px; padding: 16px 8px; }
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.hamburger {
+  width: 36px; height: 36px;
+  background: transparent;
+  border: 1px solid var(--sidebar-hover);
+  border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer; padding: 0;
+}
+.hamburger span {
+  display: block; width: 18px; height: 2px; background: #fff; border-radius: 2px;
+}
+.hamburger:hover { background: var(--sidebar-hover); }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 10px;
   font-weight: 600;
-  margin-bottom: 32px;
+  white-space: nowrap;
+  overflow: hidden;
 }
-.logo img { width: 32px; height: 32px; }
+.logo img { width: 28px; height: 28px; }
 
-nav { flex: 1; }
-nav a {
+nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+nav a, nav .group-trigger {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -30,11 +55,35 @@ nav a {
   border-radius: var(--radius-sm);
   color: var(--sidebar-text);
   text-decoration: none;
-  margin-bottom: 4px;
+  background: transparent;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
   transition: background .15s ease;
 }
-nav a:hover  { background: var(--sidebar-hover); color: #fff; }
+nav a:hover, nav .group-trigger:hover { background: var(--sidebar-hover); color: #fff; }
 nav a.active { background: var(--primary); color: #fff; }
+
+.ico { width: 22px; text-align: center; }
+.lbl { flex: 1; }
+.caret { font-size: 12px; opacity: .8; }
+
+.group .children {
+  display: flex; flex-direction: column;
+  margin: 2px 0 4px 16px;
+  padding-left: 10px;
+  border-left: 1px solid var(--sidebar-hover);
+}
+.group .children a {
+  font-size: 14px; padding: 8px 10px;
+}
+
+.layout.collapsed nav a, .layout.collapsed nav .group-trigger {
+  justify-content: center;
+  padding: 10px 4px;
+}
 
 .user {
   display: flex;

@@ -10,7 +10,11 @@ export const routes: Routes = [
       { path: 'products',   loadComponent: () => import('./pages/products/products').then(m => m.Products) },
       { path: 'quote',      loadComponent: () => import('./pages/quote/quote').then(m => m.Quote) },
       { path: 'production', loadComponent: () => import('./pages/production/production').then(m => m.Production) },
-      { path: 'inventory',  loadComponent: () => import('./pages/inventory/inventory').then(m => m.Inventory) },
+      { path: 'materiais/embalagens', loadComponent: () => import('./pages/embalagens/embalagens').then(m => m.Embalagens) },
+      { path: 'materiais/filamentos', loadComponent: () => import('./pages/inventory/inventory').then(m => m.Inventory) },
+      { path: 'materiais/insumos',    loadComponent: () => import('./pages/insumos/insumos').then(m => m.Insumos) },
+      // Backward-compatible alias
+      { path: 'inventory',  redirectTo: 'materiais/filamentos', pathMatch: 'full' },
       { path: 'settings',   loadComponent: () => import('./pages/settings/settings').then(m => m.SettingsPage) },
     ],
   },

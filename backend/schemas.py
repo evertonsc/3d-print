@@ -13,7 +13,7 @@ class PrinterIn(BaseModel):
     avg_power_kwh: float = 0.15
 
 
-# ----- Filaments -----
+# ----- Filaments (legacy catalogue) -----
 class FilamentIn(BaseModel):
     name: str
     manufacturer: Optional[str] = None
@@ -27,17 +27,24 @@ class FilamentIn(BaseModel):
 # ----- Filament inventory (each spool) -----
 class FilamentInventoryIn(BaseModel):
     filament_id: Optional[int] = None
-    color: str
     brand: Optional[str] = None
     type: Optional[str] = None
+    color: str
     source: Optional[str] = None
     purchase_date: Optional[datetime] = None
     purchase_price: float = 0
     quantity_grams: float = 1000
 
+    # additional info
+    manufacturer: Optional[str] = None
+    diameter_mm: Optional[float] = 1.75
+    density: Optional[float] = 1.24
+    nozzle_temp: Optional[float] = 0
+    bed_temp: Optional[float] = 0
+
 
 class FilamentInventoryAdjust(BaseModel):
-    quantity_grams: float           # delta (can be negative)
+    quantity_grams: float
 
 
 # ----- Settings -----
@@ -90,5 +97,13 @@ class QuoteIn(BaseModel):
     labor_hours: float = 0
     supplies_cost: float = 0
     packaging_cost: float = 0
-    # Optional override: if user just bought a more expensive spool, send the price
     override_price_per_kg: Optional[float] = None
+
+
+# ----- Stock items (Embalagens / Insumos) -----
+class StockItemIn(BaseModel):
+    category: str                         # "packaging" | "supply"
+    description: str
+    valor: float = 0
+    purchased_qty: float = 0
+    available_qty: float = 0

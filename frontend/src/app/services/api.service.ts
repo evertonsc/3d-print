@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -29,13 +29,30 @@ export interface Filament {
 export interface FilamentSpool {
   id?: number;
   filament_id?: number | null;
-  color: string;
   brand?: string;
   type?: string;
+  color: string;
   source?: string;
   purchase_date?: string | null;
   purchase_price: number;
   quantity_grams: number;
+
+  // Informações adicionais
+  manufacturer?: string;
+  diameter_mm?: number;
+  density?: number;
+  nozzle_temp?: number;
+  bed_temp?: number;
+}
+
+export interface StockItem {
+  id?: number;
+  category: 'packaging' | 'supply';
+  description: string;
+  valor: number;
+  purchased_qty: number;
+  available_qty: number;
+  unit_price?: number;
 }
 
 export interface Settings {
@@ -147,7 +164,7 @@ export class ApiService {
   updatePrinter(id: number, p: Printer) { return this.http.put<Printer>(`${this.base}/printers/${id}`, p); }
   deletePrinter(id: number) { return this.http.delete(`${this.base}/printers/${id}`); }
 
-  // ---- Filament catalogue ----
+  // ---- Filament catalogue (legacy — still available, no longer in UI) ----
   listFilaments(): Observable<Filament[]> { return this.http.get<Filament[]>(`${this.base}/filaments`); }
   createFilament(f: Filament) { return this.http.post<Filament>(`${this.base}/filaments`, f); }
   updateFilament(id: number, f: Filament) { return this.http.put<Filament>(`${this.base}/filaments/${id}`, f); }
@@ -161,6 +178,15 @@ export class ApiService {
     return this.http.post<FilamentSpool>(`${this.base}/filament-inventory/${id}/adjust`, { quantity_grams: delta_grams });
   }
   deleteSpool(id: number) { return this.http.delete(`${this.base}/filament-inventory/${id}`); }
+
+  // ---- Stock items (Embalagens / Insumos) ----
+  listStockItems(category: 'packaging' | 'supply'): Observable<StockItem[]> {
+    const params = new HttpParams().set('category', category);
+    return this.http.get<StockItem[]>(`${this.base}/stock-items`, { params });
+  }
+  createStockItem(s: StockItem) { return this.http.post<StockItem>(`${this.base}/stock-items`, s); }
+  updateStockItem(id: number, s: StockItem) { return this.http.put<StockItem>(`${this.base}/stock-items/${id}`, s); }
+  deleteStockItem(id: number) { return this.http.delete(`${this.base}/stock-items/${id}`); }
 
   // ---- Products ----
   listProducts(): Observable<any[]> { return this.http.get<any[]>(`${this.base}/products`); }
