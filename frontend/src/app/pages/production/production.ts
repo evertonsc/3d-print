@@ -6,6 +6,19 @@ import { ToastService } from '../../services/toast.service';
 import { finalize } from 'rxjs/operators';
 
 type JobForm = PrintJobRequest;
+type Row = { id: number; qty: number };
+
+interface ModalCfg {
+  kind: 'filamento' | 'insumo' | 'embalagem';
+  title: string;
+  fieldLabel: string;
+  addLabel: string;
+  options: any[];
+  optionLabel: (o: any) => string;
+  labelFor: (id: number) => string;
+  rows: Row[];
+  successMsg: string;
+}
 
 @Component({
   standalone: true,
@@ -31,13 +44,14 @@ export class Production implements OnInit {
 
   editingId: number | null = null;
 
-  // Multi-filamento
-  multiFilament = false;
-  extraFilamentIds: number[] = [];
+  // Listas persistidas via modais
+  filamentos: Row[] = [];
+  insumos: Row[] = [];
+  embalagens: Row[] = [];
 
-  // Linhas dinâmicas
-  insumos: { id: number; qty: number }[] = [];
-  embalagens: { id: number; qty: number }[] = [];
+  // Estado do modal aberto
+  modalCfg: ModalCfg | null = null;
+  draft: Row = { id: 0, qty: 1 };
 
   form: JobForm = this.emptyForm();
 
@@ -53,27 +67,89 @@ export class Production implements OnInit {
     this.api.listJobs().subscribe(d => { this.jobs = d; this.cdr.detectChanges(); });
   }
 
-  trackIdx(i: number) { return i; }
+  spoolLabel(s: FilamentSpool): string {
+    return `${s.color} ${s.brand ? '— ' + s.brand : ''} (${s.quantity_grams|0}g restantes)`;
+  }
 
-  // ----- Multi filamento -----
-  onToggleMulti() {
-    if (!this.multiFilament) this.extraFilamentIds = [];
-    else if (!this.extraFilamentIds.length) this.extraFilamentIds = [0]; // Filamento 2
+  // ========== Modais ==========
+  openFilamentos() {
+    this.modalCfg = {
+      kind: 'filamento',
+      title: 'Adicionar Filamento',
+      fieldLabel: 'Filamento',
+      addLabel: 'Adicionar Filamento',
+      options: this.spools,
+      optionLabel: (s: FilamentSpool) => this.spoolLabel(s),
+      labelFor: (id: number) => {
+        const s = this.spools.find(x => x.id === id);
+        return s ? this.spoolLabel(s) : `#${id}`;
+      },
+      rows: this.filamentos.map(r => ({ ...r })),
+      successMsg: 'Filamento(s) salvo(s)',
+    };
+    this.draft = { id: 0, qty: 1 };
     this.cdr.detectChanges();
   }
-  addExtraFilament() { this.extraFilamentIds.push(0); this.cdr.detectChanges(); }
-  removeExtraFilament(i: number) { this.extraFilamentIds.splice(i, 1); this.cdr.detectChanges(); }
-  setExtraFilament(i: number, v: number) { this.extraFilamentIds[i] = v; }
 
-  // ----- Insumos / Embalagens -----
-  addInsumo() { this.insumos.push({ id: 0, qty: 1 }); this.cdr.detectChanges(); }
-  removeInsumo(i: number) { this.insumos.splice(i, 1); this.cdr.detectChanges(); }
-  addEmbalagem() { this.embalagens.push({ id: 0, qty: 1 }); this.cdr.detectChanges(); }
-  removeEmbalagem(i: number) { this.embalagens.splice(i, 1); this.cdr.detectChanges(); }
+  openInsumos() {
+    this.modalCfg = {
+      kind: 'insumo',
+      title: 'Adicionar Insumo',
+      fieldLabel: 'Insumo',
+      addLabel: 'Adicionar Insumo',
+      options: this.insumosCat,
+      optionLabel: (s: StockItem) => s.description,
+      labelFor: (id: number) => this.insumosCat.find(x => x.id === id)?.description || `#${id}`,
+      rows: this.insumos.map(r => ({ ...r })),
+      successMsg: 'Insumo(s) salvo(s)',
+    };
+    this.draft = { id: 0, qty: 1 };
+    this.cdr.detectChanges();
+  }
 
+  openEmbalagens() {
+    this.modalCfg = {
+      kind: 'embalagem',
+      title: 'Adicionar Embalagem',
+      fieldLabel: 'Embalagem',
+      addLabel: 'Adicionar Embalagem',
+      options: this.embalagensCat,
+      optionLabel: (s: StockItem) => s.description,
+      labelFor: (id: number) => this.embalagensCat.find(x => x.id === id)?.description || `#${id}`,
+      rows: this.embalagens.map(r => ({ ...r })),
+      successMsg: 'Embalagem(ns) salva(s)',
+    };
+    this.draft = { id: 0, qty: 1 };
+    this.cdr.detectChanges();
+  }
+
+  addRow(cfg: ModalCfg) {
+    if (!this.draft.id || !this.draft.qty || this.draft.qty <= 0) {
+      this.toast.error('Preencha os campos obrigatórios (*).');
+      return;
+    }
+    cfg.rows.push({ id: this.draft.id, qty: this.draft.qty });
+    this.draft = { id: 0, qty: 1 };
+    this.cdr.detectChanges();
+  }
+
+  saveModal(cfg: ModalCfg) {
+    if (cfg.kind === 'filamento') this.filamentos = cfg.rows.map(r => ({ ...r }));
+    else if (cfg.kind === 'insumo') this.insumos = cfg.rows.map(r => ({ ...r }));
+    else if (cfg.kind === 'embalagem') this.embalagens = cfg.rows.map(r => ({ ...r }));
+    this.toast.success(cfg.successMsg);
+    this.closeModal();
+  }
+
+  closeModal() {
+    this.modalCfg = null;
+    this.cdr.detectChanges();
+  }
+
+  // ========== Submit ==========
   produce() {
     if (this.busy) return;
-    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_inventory_id || !this.form.filament_grams) {
+    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_grams) {
       this.toast.error('Preencha os campos obrigatórios (*).');
       return;
     }
@@ -81,12 +157,22 @@ export class Production implements OnInit {
       this.toast.error('Tempo (h) é obrigatório e deve ser diferente de 0.');
       return;
     }
+    if (!this.filamentos.length) {
+      this.toast.error('Adicione pelo menos um Filamento.');
+      return;
+    }
 
-    const payload: JobForm = {
+    const primary = this.filamentos[0];
+    const extras = this.filamentos.slice(1).map(r => r.id).filter(Boolean);
+
+    const payload: any = {
       ...this.form,
-      extra_filament_ids: this.multiFilament ? this.extraFilamentIds.filter(x => !!x) : [],
+      filament_inventory_id: primary.id,
+      extra_filament_ids: extras,
       insumos: this.insumos.filter(r => r.id && r.qty > 0),
       embalagens: this.embalagens.filter(r => r.id && r.qty > 0),
+      // anexa lista completa de filamentos (com qty) para reabrir o modal na edição
+      filamentos_full: this.filamentos,
     };
 
     this.busy = true;
@@ -134,8 +220,15 @@ export class Production implements OnInit {
       sold_value: j.sold_value || 0,
     };
     const ex: any = (j as any).extras || {};
-    this.extraFilamentIds = ex.extra_filament_ids || [];
-    this.multiFilament = this.extraFilamentIds.length > 0;
+    // Reidrata a lista completa de filamentos
+    if (Array.isArray(ex.filamentos_full) && ex.filamentos_full.length) {
+      this.filamentos = ex.filamentos_full.map((x: any) => ({ id: x.id, qty: x.qty || 1 }));
+    } else {
+      this.filamentos = [{ id: j.filament_inventory_id, qty: 1 }];
+      for (const fid of (ex.extra_filament_ids || [])) {
+        if (fid) this.filamentos.push({ id: fid, qty: 1 });
+      }
+    }
     this.insumos = (ex.insumos || []).map((x: any) => ({ id: x.id, qty: x.qty }));
     this.embalagens = (ex.embalagens || []).map((x: any) => ({ id: x.id, qty: x.qty }));
     this.cdr.detectChanges();
@@ -160,14 +253,9 @@ export class Production implements OnInit {
     });
   }
 
-  spoolLabel(s: FilamentSpool): string {
-    return `${s.color} ${s.brand ? '— ' + s.brand : ''} (${s.quantity_grams|0}g restantes)`;
-  }
-
   private resetForm() {
     this.form = this.emptyForm();
-    this.multiFilament = false;
-    this.extraFilamentIds = [];
+    this.filamentos = [];
     this.insumos = [];
     this.embalagens = [];
     this.cdr.detectChanges();

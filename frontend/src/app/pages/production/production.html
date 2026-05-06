@@ -18,37 +18,6 @@
       </select>
     </div>
 
-    <!-- Filamento principal -->
-    <div>
-      <label class="label">Filamento <span class="required">*</span></label>
-      <select class="input" required [(ngModel)]="form.filament_inventory_id">
-        <option [ngValue]="0">Selecione...</option>
-        <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
-      </select>
-    </div>
-
-    <!-- Multi filamento toggle -->
-    <div style="display:flex; align-items:center; gap:8px; padding-top:24px;">
-      <input type="checkbox" id="multiFil" [(ngModel)]="multiFilament" (change)="onToggleMulti()">
-      <label for="multiFil" class="label" style="margin:0;">Usar múltiplos filamentos</label>
-    </div>
-
-    <ng-container *ngIf="multiFilament">
-      <div *ngFor="let fid of extraFilamentIds; let i = index; trackBy: trackIdx">
-        <label class="label">Filamento {{ i + 2 }}</label>
-        <div style="display:flex; gap:8px;">
-          <select class="input" [ngModel]="fid" (ngModelChange)="setExtraFilament(i, $event)">
-            <option [ngValue]="0">Selecione...</option>
-            <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
-          </select>
-          <button class="btn btn-danger" type="button" (click)="removeExtraFilament(i)" title="Remover">✕</button>
-        </div>
-      </div>
-      <div style="display:flex; align-items:end;">
-        <button class="btn" type="button" (click)="addExtraFilament()">+ Adicionar Filamento</button>
-      </div>
-    </ng-container>
-
     <div>
       <label class="label">Peso total (g) <span class="required">*</span></label>
       <input class="input" type="number" required [(ngModel)]="form.filament_grams">
@@ -70,55 +39,20 @@
     </div>
   </div>
 
-  <!-- Insumos -->
-  <h3 style="margin-top:24px;">Insumos</h3>
-  <div class="form-grid">
-    <ng-container *ngFor="let row of insumos; let i = index; trackBy: trackIdx">
-      <div>
-        <label class="label">Insumo {{ i + 1 }}</label>
-        <select class="input" [(ngModel)]="row.id">
-          <option [ngValue]="0">Selecione...</option>
-          <option *ngFor="let s of insumosCat" [ngValue]="s.id">{{ s.description }}</option>
-        </select>
-      </div>
-      <div>
-        <label class="label">Quantidade</label>
-        <div style="display:flex; gap:8px;">
-          <input class="input" type="number" min="0" step="1" [(ngModel)]="row.qty">
-          <button class="btn btn-danger" type="button" (click)="removeInsumo(i)" title="Remover">✕</button>
-        </div>
-      </div>
-    </ng-container>
-  </div>
-  <div style="margin-top:8px;">
-    <button class="btn" type="button" (click)="addInsumo()">+ Adicionar Insumo</button>
+  <!-- Botões dos modais -->
+  <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
+    <button class="btn" type="button" (click)="openFilamentos()">
+      + Adicionar Filamento <span *ngIf="filamentos.length" class="muted">({{ filamentos.length }})</span>
+    </button>
+    <button class="btn" type="button" (click)="openInsumos()">
+      + Adicionar Insumo <span *ngIf="insumos.length" class="muted">({{ insumos.length }})</span>
+    </button>
+    <button class="btn" type="button" (click)="openEmbalagens()">
+      + Adicionar Embalagem <span *ngIf="embalagens.length" class="muted">({{ embalagens.length }})</span>
+    </button>
   </div>
 
-  <!-- Embalagens -->
-  <h3 style="margin-top:24px;">Embalagens</h3>
-  <div class="form-grid">
-    <ng-container *ngFor="let row of embalagens; let i = index; trackBy: trackIdx">
-      <div>
-        <label class="label">Embalagem {{ i + 1 }}</label>
-        <select class="input" [(ngModel)]="row.id">
-          <option [ngValue]="0">Selecione...</option>
-          <option *ngFor="let s of embalagensCat" [ngValue]="s.id">{{ s.description }}</option>
-        </select>
-      </div>
-      <div>
-        <label class="label">Quantidade</label>
-        <div style="display:flex; gap:8px;">
-          <input class="input" type="number" min="0" step="1" [(ngModel)]="row.qty">
-          <button class="btn btn-danger" type="button" (click)="removeEmbalagem(i)" title="Remover">✕</button>
-        </div>
-      </div>
-    </ng-container>
-  </div>
-  <div style="margin-top:8px;">
-    <button class="btn" type="button" (click)="addEmbalagem()">+ Adicionar Embalagem</button>
-  </div>
-
-  <div style="margin-top:16px; display:flex; gap:12px;">
+  <div style="margin-top:24px; display:flex; gap:12px;">
     <button class="btn btn-primary" (click)="produce()" [disabled]="busy">
       {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar alterações' : 'Registrar Produto') }}
     </button>
@@ -164,3 +98,64 @@
     </tbody>
   </table>
 </div>
+
+<!-- ========== MODAL GENÉRICO ========== -->
+<ng-template #modalTpl let-cfg>
+  <div class="modal-backdrop" (click)="closeModal()"></div>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>{{ cfg.title }}</h3>
+      <button class="btn btn-icon" type="button" (click)="closeModal()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-grid">
+        <div>
+          <label class="label">{{ cfg.fieldLabel }} <span class="required">*</span></label>
+          <select class="input" [(ngModel)]="draft.id">
+            <option [ngValue]="0">Selecione...</option>
+            <option *ngFor="let opt of cfg.options" [ngValue]="opt.id">{{ cfg.optionLabel(opt) }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Quantidade <span class="required">*</span></label>
+          <input class="input" type="number" min="0" step="1" [(ngModel)]="draft.qty">
+        </div>
+        <div style="align-self:end;">
+          <button class="btn btn-primary" type="button" (click)="addRow(cfg)">{{ cfg.addLabel }}</button>
+        </div>
+      </div>
+
+      <table class="table" style="margin-top:16px;">
+        <thead>
+          <tr>
+            <th>{{ cfg.fieldLabel }}</th>
+            <th>Quantidade</th>
+            <th style="width:80px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of cfg.rows; let i = index">
+            <td>{{ cfg.labelFor(row.id) }}</td>
+            <td>{{ row.qty }}</td>
+            <td>
+              <button class="btn btn-danger btn-icon" type="button" (click)="cfg.rows.splice(i,1)" title="Remover">✕</button>
+            </td>
+          </tr>
+          <tr *ngIf="!cfg.rows.length">
+            <td colspan="3" class="muted" style="text-align:center; padding:16px;">Nenhum item adicionado.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" type="button" (click)="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" type="button" (click)="saveModal(cfg)">Salvar</button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-container *ngIf="modalCfg">
+  <ng-container *ngTemplateOutlet="modalTpl; context: { $implicit: modalCfg }"></ng-container>
+</ng-container>
