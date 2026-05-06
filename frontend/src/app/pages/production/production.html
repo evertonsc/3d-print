@@ -1,54 +1,137 @@
 <div class="card">
   <div class="card-header">
-    <h2>Produção</h2>
-    <small class="muted">Cada produção desconta gramas do carretel selecionado e snapshota o preço do filamento usado.</small>
+    <h2>Produtos</h2>
+    <small class="muted">Cada produção desconta gramas do filamento selecionado e baixa o estoque dos insumos / embalagens utilizados.</small>
   </div>
 
   <div class="form-grid">
-    <div><label class="label">Projeto <span class="required">*</span></label>
-      <input class="input" required [(ngModel)]="form.project_name" placeholder="Vaso Voronoi"></div>
-    <div><label class="label">Impressora <span class="required">*</span></label>
+    <div>
+      <label class="label">Produto <span class="required">*</span></label>
+      <input class="input" required [(ngModel)]="form.project_name" placeholder="Vaso Voronoi">
+    </div>
+
+    <div>
+      <label class="label">Impressora <span class="required">*</span></label>
       <select class="input" required [(ngModel)]="form.printer_id">
         <option [ngValue]="0">Selecione...</option>
         <option *ngFor="let p of printers" [ngValue]="p.id">{{ p.name }}</option>
       </select>
     </div>
-    <div><label class="label">Carretel <span class="required">*</span></label>
+
+    <!-- Filamento principal -->
+    <div>
+      <label class="label">Filamento <span class="required">*</span></label>
       <select class="input" required [(ngModel)]="form.filament_inventory_id">
         <option [ngValue]="0">Selecione...</option>
         <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
       </select>
     </div>
-    <div><label class="label">Quantidade <span class="required">*</span></label>
-      <input class="input" type="number" min="1" required [(ngModel)]="form.quantity"></div>
-    <div><label class="label">Gramas / unidade <span class="required">*</span></label>
-      <input class="input" type="number" required [(ngModel)]="form.filament_grams"></div>
-    <div><label class="label">Tempo / unidade (h)</label>
-      <input class="input" type="number" step="0.1" [(ngModel)]="form.print_time_hours"></div>
-    <div><label class="label">Trabalho / unidade (h)</label>
-      <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours"></div>
-    <div><label class="label">Insumos / un (R$)</label>
-      <input class="input" type="number" step="0.5" [(ngModel)]="form.supplies_cost"></div>
-    <div><label class="label">Embalagem / un (R$)</label>
-      <input class="input" type="number" step="0.5" [(ngModel)]="form.packaging_cost"></div>
-    <div><label class="label">Valor vendido total (R$)</label>
-      <input class="input" type="number" step="0.5" [(ngModel)]="form.sold_value"></div>
+
+    <!-- Multi filamento toggle -->
+    <div style="display:flex; align-items:center; gap:8px; padding-top:24px;">
+      <input type="checkbox" id="multiFil" [(ngModel)]="multiFilament" (change)="onToggleMulti()">
+      <label for="multiFil" class="label" style="margin:0;">Usar múltiplos filamentos</label>
+    </div>
+
+    <ng-container *ngIf="multiFilament">
+      <div *ngFor="let fid of extraFilamentIds; let i = index; trackBy: trackIdx">
+        <label class="label">Filamento {{ i + 2 }}</label>
+        <div style="display:flex; gap:8px;">
+          <select class="input" [ngModel]="fid" (ngModelChange)="setExtraFilament(i, $event)">
+            <option [ngValue]="0">Selecione...</option>
+            <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
+          </select>
+          <button class="btn btn-danger" type="button" (click)="removeExtraFilament(i)" title="Remover">✕</button>
+        </div>
+      </div>
+      <div style="display:flex; align-items:end;">
+        <button class="btn" type="button" (click)="addExtraFilament()">+ Adicionar Filamento</button>
+      </div>
+    </ng-container>
+
+    <div>
+      <label class="label">Peso total (g) <span class="required">*</span></label>
+      <input class="input" type="number" required [(ngModel)]="form.filament_grams">
+    </div>
+
+    <div>
+      <label class="label">Tempo (h) <span class="required">*</span></label>
+      <input class="input" type="number" step="0.1" min="0.0001" required [(ngModel)]="form.print_time_hours">
+    </div>
+
+    <div>
+      <label class="label">Trabalho (h)</label>
+      <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours">
+    </div>
+
+    <div>
+      <label class="label">Valor vendido total (R$)</label>
+      <input class="input" type="number" step="0.5" [(ngModel)]="form.sold_value">
+    </div>
+  </div>
+
+  <!-- Insumos -->
+  <h3 style="margin-top:24px;">Insumos</h3>
+  <div class="form-grid">
+    <ng-container *ngFor="let row of insumos; let i = index; trackBy: trackIdx">
+      <div>
+        <label class="label">Insumo {{ i + 1 }}</label>
+        <select class="input" [(ngModel)]="row.id">
+          <option [ngValue]="0">Selecione...</option>
+          <option *ngFor="let s of insumosCat" [ngValue]="s.id">{{ s.description }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">Quantidade</label>
+        <div style="display:flex; gap:8px;">
+          <input class="input" type="number" min="0" step="1" [(ngModel)]="row.qty">
+          <button class="btn btn-danger" type="button" (click)="removeInsumo(i)" title="Remover">✕</button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+  <div style="margin-top:8px;">
+    <button class="btn" type="button" (click)="addInsumo()">+ Adicionar Insumo</button>
+  </div>
+
+  <!-- Embalagens -->
+  <h3 style="margin-top:24px;">Embalagens</h3>
+  <div class="form-grid">
+    <ng-container *ngFor="let row of embalagens; let i = index; trackBy: trackIdx">
+      <div>
+        <label class="label">Embalagem {{ i + 1 }}</label>
+        <select class="input" [(ngModel)]="row.id">
+          <option [ngValue]="0">Selecione...</option>
+          <option *ngFor="let s of embalagensCat" [ngValue]="s.id">{{ s.description }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">Quantidade</label>
+        <div style="display:flex; gap:8px;">
+          <input class="input" type="number" min="0" step="1" [(ngModel)]="row.qty">
+          <button class="btn btn-danger" type="button" (click)="removeEmbalagem(i)" title="Remover">✕</button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+  <div style="margin-top:8px;">
+    <button class="btn" type="button" (click)="addEmbalagem()">+ Adicionar Embalagem</button>
   </div>
 
   <div style="margin-top:16px; display:flex; gap:12px;">
     <button class="btn btn-primary" (click)="produce()" [disabled]="busy">
-      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar alterações' : 'Registrar Produção') }}
+      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar alterações' : 'Registrar Produto') }}
     </button>
     <button class="btn" *ngIf="editingId != null" (click)="cancelEdit()">Cancelar</button>
   </div>
 </div>
 
 <div class="card" style="margin-top:24px;">
-  <h3>Produções Registradas</h3>
+  <h3>Produtos Registrados</h3>
   <table class="table">
     <thead>
       <tr>
-        <th>Data</th><th>Projeto</th><th>Qtd</th><th>g</th>
+        <th>Data</th><th>Produto</th><th>g</th>
         <th>Custo Filam.</th><th>Energia</th><th>Dep.</th><th>Trab.</th>
         <th>Custo Final</th><th>Sugerido</th><th>Marketplace</th>
         <th>Vendido</th><th>Lucro %</th><th>Ações</th>
@@ -58,7 +141,6 @@
       <tr *ngFor="let j of jobs">
         <td>{{ j.date | date:'dd/MM/yy' }}</td>
         <td>{{ j.project_name }}</td>
-        <td>{{ j.quantity }}</td>
         <td>{{ j.filament_grams | number:'1.0-0' }}</td>
         <td>R$ {{ j.filament_cost | number:'1.2-2' }}</td>
         <td>R$ {{ j.energy_cost | number:'1.2-2' }}</td>
@@ -78,7 +160,7 @@
           </button>
         </td>
       </tr>
-      <tr *ngIf="!jobs.length"><td colspan="14" class="muted" style="text-align:center;padding:24px;">Nenhuma produção ainda.</td></tr>
+      <tr *ngIf="!jobs.length"><td colspan="13" class="muted" style="text-align:center;padding:24px;">Nenhum produto ainda.</td></tr>
     </tbody>
   </table>
 </div>

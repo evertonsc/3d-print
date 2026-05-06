@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 
-# ----- Printers -----
 class PrinterIn(BaseModel):
     name: str
     manufacturer: Optional[str] = None
@@ -13,7 +12,6 @@ class PrinterIn(BaseModel):
     avg_power_kwh: float = 0.15
 
 
-# ----- Filaments (legacy catalogue) -----
 class FilamentIn(BaseModel):
     name: str
     manufacturer: Optional[str] = None
@@ -24,7 +22,6 @@ class FilamentIn(BaseModel):
     density: float = 1.24
 
 
-# ----- Filament inventory (each spool) -----
 class FilamentInventoryIn(BaseModel):
     filament_id: Optional[int] = None
     brand: Optional[str] = None
@@ -35,7 +32,6 @@ class FilamentInventoryIn(BaseModel):
     purchase_price: float = 0
     quantity_grams: float = 1000
 
-    # additional info
     manufacturer: Optional[str] = None
     diameter_mm: Optional[float] = 1.75
     density: Optional[float] = 1.24
@@ -47,7 +43,6 @@ class FilamentInventoryAdjust(BaseModel):
     quantity_grams: float
 
 
-# ----- Settings -----
 class SettingsIn(BaseModel):
     energy_cost_per_kwh: float
     labor_cost_per_hour: float
@@ -59,7 +54,6 @@ class SettingsIn(BaseModel):
     markup: float
 
 
-# ----- Products (recipes) -----
 class ProductIn(BaseModel):
     name: str
     printer_id: Optional[int] = None
@@ -71,7 +65,11 @@ class ProductIn(BaseModel):
     packaging_cost: float = 0
 
 
-# ----- Print jobs / sales -----
+class StockItemRef(BaseModel):
+    id: int
+    qty: float = 0
+
+
 class PrintJobIn(BaseModel):
     project_name: str
     printer_id: int
@@ -85,8 +83,12 @@ class PrintJobIn(BaseModel):
     sold_value: float = 0
     date: Optional[datetime] = None
 
+    # New: extras (multi-filamento, insumos, embalagens)
+    extra_filament_ids: Optional[List[int]] = []
+    insumos: Optional[List[StockItemRef]] = []
+    embalagens: Optional[List[StockItemRef]] = []
 
-# ----- Quote / Orçamento -----
+
 class QuoteIn(BaseModel):
     project_name: str
     printer_id: int
@@ -100,9 +102,8 @@ class QuoteIn(BaseModel):
     override_price_per_kg: Optional[float] = None
 
 
-# ----- Stock items (Embalagens / Insumos) -----
 class StockItemIn(BaseModel):
-    category: str                         # "packaging" | "supply"
+    category: str
     description: str
     valor: float = 0
     purchased_qty: float = 0

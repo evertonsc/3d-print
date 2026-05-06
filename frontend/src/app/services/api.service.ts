@@ -119,6 +119,9 @@ export interface PrintJobRequest {
   packaging_cost: number;
   sold_value: number;
   date?: string | null;
+  extra_filament_ids?: number[];
+  insumos?: { id: number; qty: number }[];
+  embalagens?: { id: number; qty: number }[];
 }
 
 export interface PrintJob extends PrintJobRequest {

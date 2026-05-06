@@ -10,6 +10,7 @@ Mirrors the spreadsheet ("Produtos", "Filamentos", "Impressoras",
   * Quote endpoint with optional override for newly-purchased filament.
   * DRE endpoint with monthly aggregates.
 """
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -375,6 +376,60 @@ def quote(payload: schemas.QuoteIn, db: Session = Depends(get_db)):
 #   * deducts grams from the chosen spool (handwritten note #1, #2)
 #   * snapshots filament price (note #4)
 # ============================================================
+
+def _parse_extras(raw):
+    if not raw:
+        return {"extra_filament_ids": [], "insumos": [], "embalagens": []}
+    try:
+        d = json.loads(raw)
+        d.setdefault("extra_filament_ids", [])
+        d.setdefault("insumos", [])
+        d.setdefault("embalagens", [])
+        return d
+    except Exception:
+        return {"extra_filament_ids": [], "insumos": [], "embalagens": []}
+
+
+def _apply_stock_extras(db, payload, qty, refund=None):
+    """Deduct stock for insumos/embalagens; add their cost to supplies/packaging.
+    `refund`: previous extras dict to refund first (on update). Returns
+    (extra_supplies_cost, extra_packaging_cost, extras_json_str)."""
+    if refund:
+        for it in refund.get("insumos", []) or []:
+            si = db.get(models.StockItem, it.get("id"))
+            if si: si.available_qty = (si.available_qty or 0) + (it.get("qty") or 0)
+        for it in refund.get("embalagens", []) or []:
+            si = db.get(models.StockItem, it.get("id"))
+            if si: si.available_qty = (si.available_qty or 0) + (it.get("qty") or 0)
+
+    insumos = [i.dict() if hasattr(i, "dict") else i for i in (payload.insumos or [])]
+    embalagens = [i.dict() if hasattr(i, "dict") else i for i in (payload.embalagens or [])]
+    extra_filament_ids = list(payload.extra_filament_ids or [])
+
+    extra_supplies = 0.0
+    for it in insumos:
+        si = db.get(models.StockItem, it.get("id"))
+        if not si: continue
+        q = float(it.get("qty") or 0) * qty
+        si.available_qty = (si.available_qty or 0) - q
+        extra_supplies += (si.unit_price or 0) * q
+
+    extra_packaging = 0.0
+    for it in embalagens:
+        si = db.get(models.StockItem, it.get("id"))
+        if not si: continue
+        q = float(it.get("qty") or 0) * qty
+        si.available_qty = (si.available_qty or 0) - q
+        extra_packaging += (si.unit_price or 0) * q
+
+    extras = {
+        "extra_filament_ids": extra_filament_ids,
+        "insumos": insumos,
+        "embalagens": embalagens,
+    }
+    return extra_supplies, extra_packaging, json.dumps(extras)
+
+
 def _job_dict(j: models.PrintJob) -> dict:
     return {
         "id": j.id, "date": j.date.isoformat() if j.date else None,
@@ -389,6 +444,7 @@ def _job_dict(j: models.PrintJob) -> dict:
         "subtotal": j.subtotal, "final_cost": j.final_cost,
         "suggested_price": j.suggested_price, "marketplace_price": j.marketplace_price,
         "sold_value": j.sold_value,
+        "extras": _parse_extras(j.extras_json),
         "profit_pct": (
             round((j.sold_value - j.final_cost) / j.final_cost, 4)
             if j.sold_value and j.final_cost else None
@@ -412,6 +468,7 @@ def create_job(payload: schemas.PrintJobIn, db: Session = Depends(get_db)):
 
     qty = max(1, payload.quantity)
     needed_grams = (payload.filament_grams or 0) * qty
+    extra_sup, extra_pack, extras_json_str = _apply_stock_extras(db, payload, qty)
 
     if (spool.quantity_grams or 0) < needed_grams:
         raise HTTPException(
@@ -438,8 +495,8 @@ def create_job(payload: schemas.PrintJobIn, db: Session = Depends(get_db)):
         grams=needed_grams,
         print_time_hours=(payload.print_time_hours or 0) * qty,
         labor_hours=(payload.labor_hours or 0) * qty,
-        supplies_cost=(payload.supplies_cost or 0) * qty,
-        packaging_cost=(payload.packaging_cost or 0) * qty,
+        supplies_cost=(payload.supplies_cost or 0) * qty + extra_sup,
+        packaging_cost=(payload.packaging_cost or 0) * qty + extra_pack,
         filament_price_per_kg=price_per_kg,
         printer_avg_power_kwh=printer.avg_power_kwh,
         printer_depreciation_per_hour=printer.depreciation_per_hour,
@@ -460,8 +517,9 @@ def create_job(payload: schemas.PrintJobIn, db: Session = Depends(get_db)):
         filament_grams=needed_grams,
         print_time_hours=(payload.print_time_hours or 0) * qty,
         labor_hours=(payload.labor_hours or 0) * qty,
-        supplies_cost=(payload.supplies_cost or 0) * qty,
-        packaging_cost=(payload.packaging_cost or 0) * qty,
+        supplies_cost=(payload.supplies_cost or 0) * qty + extra_sup,
+        packaging_cost=(payload.packaging_cost or 0) * qty + extra_pack,
+        extras_json=extras_json_str,
         filament_price_per_kg_snapshot=breakdown.filament_price_per_kg_snapshot,
         filament_cost=breakdown.filament_cost,
         energy_cost=breakdown.energy_cost,
@@ -491,6 +549,8 @@ def update_job(jid: int, payload: schemas.PrintJobIn, db: Session = Depends(get_
 
     qty = max(1, payload.quantity)
     new_total_grams = (payload.filament_grams or 0) * qty
+    old_extras = _parse_extras(j.extras_json)
+    extra_sup, extra_pack, extras_json_str = _apply_stock_extras(db, payload, qty, refund=old_extras)
     old_spool = db.get(models.FilamentInventory, j.filament_inventory_id)
 
     # Refund old stock, then deduct new.
@@ -516,8 +576,8 @@ def update_job(jid: int, payload: schemas.PrintJobIn, db: Session = Depends(get_
         grams=new_total_grams,
         print_time_hours=(payload.print_time_hours or 0) * qty,
         labor_hours=(payload.labor_hours or 0) * qty,
-        supplies_cost=(payload.supplies_cost or 0) * qty,
-        packaging_cost=(payload.packaging_cost or 0) * qty,
+        supplies_cost=(payload.supplies_cost or 0) * qty + extra_sup,
+        packaging_cost=(payload.packaging_cost or 0) * qty + extra_pack,
         filament_price_per_kg=price_per_kg,
         printer_avg_power_kwh=printer.avg_power_kwh,
         printer_depreciation_per_hour=printer.depreciation_per_hour,
@@ -534,8 +594,9 @@ def update_job(jid: int, payload: schemas.PrintJobIn, db: Session = Depends(get_
     j.filament_grams = new_total_grams
     j.print_time_hours = (payload.print_time_hours or 0) * qty
     j.labor_hours = (payload.labor_hours or 0) * qty
-    j.supplies_cost = (payload.supplies_cost or 0) * qty
-    j.packaging_cost = (payload.packaging_cost or 0) * qty
+    j.supplies_cost = (payload.supplies_cost or 0) * qty + extra_sup
+    j.packaging_cost = (payload.packaging_cost or 0) * qty + extra_pack
+    j.extras_json = extras_json_str
     j.filament_price_per_kg_snapshot = breakdown.filament_price_per_kg_snapshot
     j.filament_cost = breakdown.filament_cost
     j.energy_cost = breakdown.energy_cost
@@ -558,6 +619,11 @@ def delete_job(jid: int, db: Session = Depends(get_db)):
     spool = db.get(models.FilamentInventory, j.filament_inventory_id)
     if spool:
         spool.quantity_grams = (spool.quantity_grams or 0) + (j.filament_grams or 0)
+    # refund stock items
+    ex = _parse_extras(j.extras_json)
+    for it in ex.get('insumos', []) + ex.get('embalagens', []):
+        si = db.get(models.StockItem, it.get('id'))
+        if si: si.available_qty = (si.available_qty or 0) + (it.get('qty') or 0)
     db.delete(j); db.commit()
     return {"ok": True}
 
