@@ -1,7 +1,7 @@
 import { Component, ChangeDetectorRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, Filament, Printer, QuoteRequest, QuoteResult } from '../../services/api.service';
+import { ApiService, FilamentSpool, Printer, PrintJob, Quote, QuoteRequest, StockItem } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { finalize } from 'rxjs/operators';
 
@@ -12,155 +12,135 @@ import { finalize } from 'rxjs/operators';
   templateUrl: './quote.html',
   styleUrls: ['./quote.css'],
 })
-export class Quote implements OnInit {
+export class QuotePage implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   private cdr = inject(ChangeDetectorRef);
 
   printers: Printer[] = [];
-  filaments: Filament[] = [];
+  spools: FilamentSpool[] = [];
+  products: PrintJob[] = [];
+  insumosCat: StockItem[] = [];
+  embalagensCat: StockItem[] = [];
+  quotes: Quote[] = [];
 
-  form: QuoteRequest = {
-    project_name: '', printer_id: 0, filament_id: 0, quantity: 1,
-    filament_grams: 0, print_time_hours: 0, labor_hours: 0,
-    supplies_cost: 0, packaging_cost: 0, override_price_per_kg: null,
-  };
+  busy = false;
+  removing: Record<number, boolean> = {};
+  editingId: number | null = null;
 
-  result: QuoteResult | null = null;
-
-  calculating = false;
-  saving = false;
+  form: QuoteRequest = this.empty();
 
   ngOnInit() {
     this.api.listPrinters().subscribe(d => { this.printers = d; this.cdr.detectChanges(); });
-    this.api.listFilaments().subscribe(d => { this.filaments = d; this.cdr.detectChanges(); });
+    this.api.listSpools().subscribe(d => { this.spools = d; this.cdr.detectChanges(); });
+    this.api.listJobs().subscribe(d => { this.products = d; this.cdr.detectChanges(); });
+    this.api.listStockItems('supply').subscribe(d => { this.insumosCat = d; this.cdr.detectChanges(); });
+    this.api.listStockItems('packaging').subscribe(d => { this.embalagensCat = d; this.cdr.detectChanges(); });
+    this.load();
   }
 
-  calculate() {
-    if (this.calculating) return;
-    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_id || !this.form.filament_grams) {
+  load() {
+    this.api.listQuotes().subscribe(d => { this.quotes = d; this.cdr.detectChanges(); });
+  }
+
+  spoolLabel(s: FilamentSpool): string {
+    return `${s.color} ${s.brand ? '— ' + s.brand : ''}`;
+  }
+
+  /** When a Produto is selected, fill Impressora, Tempo, Trabalho, Insumos, Embalagens. */
+  onProductChange() {
+    const p = this.products.find(x => x.id === this.form.product_job_id);
+    if (!p) return;
+    this.form.printer_id = p.printer_id;
+    this.form.print_time_hours = p.print_time_hours || 0;
+    this.form.labor_hours = p.labor_hours || 0;
+    const ex: any = (p as any).extras || {};
+    this.form.insumos = (ex.insumos || []).map((x: any) => ({ id: x.id, qty: x.qty }));
+    this.form.embalagens = (ex.embalagens || []).map((x: any) => ({ id: x.id, qty: x.qty }));
+    if (!this.form.filament_grams) this.form.filament_grams = p.filament_grams || 0;
+    this.cdr.detectChanges();
+  }
+
+  save() {
+    if (this.busy) return;
+    if (!this.form.product_job_id || !this.form.printer_id || !this.form.filament_inventory_id || !this.form.filament_grams) {
       this.toast.error('Preencha os campos obrigatórios (*).');
       return;
     }
-    this.calculating = true;
-    this.api.quote(this.form).pipe(finalize(() => { this.calculating = false; this.cdr.detectChanges(); })).subscribe({
-      next: r => { this.result = r; this.toast.success('Orçamento calculado.'); this.cdr.detectChanges(); },
-      error: () => this.toast.error('Erro ao calcular orçamento.'),
+    const product = this.products.find(p => p.id === this.form.product_job_id);
+    const payload: QuoteRequest = {
+      ...this.form,
+      project_name: product?.project_name || '',
+    };
+    this.busy = true;
+    const req = this.editingId != null
+      ? this.api.updateQuote(this.editingId, payload)
+      : this.api.createQuote(payload);
+    req.pipe(finalize(() => { this.busy = false; this.cdr.detectChanges(); })).subscribe({
+      next: () => {
+        this.toast.success(this.editingId != null ? 'Orçamento atualizado.' : 'Orçamento salvo.');
+        this.cancelEdit();
+        this.load();
+      },
+      error: e => this.toast.error(e?.error?.detail || 'Erro ao salvar orçamento.'),
     });
   }
 
-  downloadPdf() {
-    if (!this.result) return;
-    const r = this.result;
-    const fmt = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const html = `<!doctype html><html><head><meta charset="utf-8">
-<title>Orçamento — ${r.project_name}</title>
-<style>
-  body { font-family: 'Segoe UI', Arial, sans-serif; color:#0f172a; padding:32px; max-width:760px; margin:auto; }
-  h1 { color:#16a34a; margin:0 0 4px; } small { color:#64748b; }
-  table { width:100%; border-collapse:collapse; margin-top:18px; }
-  th, td { padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:left; font-size:14px; }
-  th { color:#64748b; font-weight:500; }
-  .total td { font-weight:600; border-top:2px solid #0f172a; }
-  .meta { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:14px; font-size:14px; }
-  .meta b { color:#64748b; font-weight:500; margin-right:6px; }
-  @media print { .noprint { display:none; } body { padding:12px; } }
-</style></head><body>
-  <h1>Orçamento — Tom Studio 3D</h1>
-  <small>Gerado em ${new Date().toLocaleString('pt-BR')}</small>
-  <div class="meta">
-    <div><b>Projeto:</b> ${r.project_name}</div>
-    <div><b>Quantidade:</b> ${r.quantity}</div>
-    <div><b>Impressora:</b> ${r.printer}</div>
-    <div><b>Filamento:</b> ${r.filament}</div>
-    <div><b>Preço filamento:</b> R$ ${fmt(r.price_per_kg_used)}/kg</div>
-  </div>
-  <table>
-    <thead><tr><th>Componente</th><th style="text-align:right">Por unidade</th><th style="text-align:right">Total</th></tr></thead>
-    <tbody>
-      <tr><td>Filamento</td>     <td align="right">R$ ${fmt(r.per_unit.filament_cost)}</td>     <td align="right">R$ ${fmt(r.filament_cost)}</td></tr>
-      <tr><td>Energia</td>       <td align="right">R$ ${fmt(r.per_unit.energy_cost)}</td>       <td align="right">R$ ${fmt(r.energy_cost)}</td></tr>
-      <tr><td>Depreciação</td>   <td align="right">R$ ${fmt(r.per_unit.depreciation_cost)}</td> <td align="right">R$ ${fmt(r.depreciation_cost)}</td></tr>
-      <tr><td>Trabalho</td>      <td align="right">R$ ${fmt(r.per_unit.labor_cost)}</td>        <td align="right">R$ ${fmt(r.labor_cost)}</td></tr>
-      <tr><td>Insumos</td>       <td align="right">—</td>                                       <td align="right">R$ ${fmt(r.supplies_cost)}</td></tr>
-      <tr><td>Embalagem</td>     <td align="right">—</td>                                       <td align="right">R$ ${fmt(r.packaging_cost)}</td></tr>
-      <tr class="total"><td>Subtotal</td>           <td align="right">R$ ${fmt(r.per_unit.subtotal)}</td>          <td align="right">R$ ${fmt(r.subtotal)}</td></tr>
-      <tr class="total"><td>Custo final (com falha)</td><td align="right">R$ ${fmt(r.per_unit.final_cost)}</td>   <td align="right">R$ ${fmt(r.final_cost)}</td></tr>
-      <tr class="total"><td>Preço sugerido (180% acima)</td><td align="right">R$ ${fmt(r.per_unit.suggested_price)}</td><td align="right">R$ ${fmt(r.suggested_price)}</td></tr>
-    </tbody>
-  </table>
-  <button class="noprint" onclick="window.print()" style="margin-top:20px;padding:10px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">
-    Imprimir / Salvar como PDF
-  </button>
-</body></html>`;
-    const w = window.open('', '_blank');
-    if (!w) { this.toast.error('Pop-up bloqueado pelo navegador.'); return; }
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 400);
+  edit(q: Quote) {
+    this.editingId = q.id;
+    const ex: any = (q as any).extras || {};
+    this.form = {
+      client: q.client || '',
+      product_job_id: q.product_job_id,
+      project_name: q.project_name,
+      printer_id: q.printer_id,
+      filament_inventory_id: q.filament_inventory_id,
+      filament_id: null,
+      quantity: q.quantity || 1,
+      filament_grams: (q.filament_grams || 0) / Math.max(1, q.quantity || 1),
+      print_time_hours: (q.print_time_hours || 0) / Math.max(1, q.quantity || 1),
+      labor_hours: (q.labor_hours || 0) / Math.max(1, q.quantity || 1),
+      supplies_cost: 0,
+      packaging_cost: 0,
+      override_price_per_kg: null,
+      insumos: (ex.insumos || []).map((x: any) => ({ id: x.id, qty: x.qty })),
+      embalagens: (ex.embalagens || []).map((x: any) => ({ id: x.id, qty: x.qty })),
+    };
+    this.cdr.detectChanges();
   }
 
-  /**
-   * Saves the current quote as a Production (PrintJob).
-   * Picks the spool with the most grams matching the chosen filament,
-   * or — if no spool exists — auto-creates one from the catalogue
-   * filament so the user always gets a saved production.
-   */
-  saveAsJob() {
-    if (this.saving) return;
-    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_id || !this.form.filament_grams) {
-      this.toast.error('Preencha os campos obrigatórios (*) antes de salvar.');
-      return;
-    }
-    this.saving = true;
+  cancelEdit() {
+    this.editingId = null;
+    this.form = this.empty();
+  }
 
-    const totalGramsNeeded = (this.form.filament_grams || 0) * (this.form.quantity || 1);
-
-    this.api.listSpools().subscribe(spools => {
-      // Prefer spools of the same filament with enough stock; fall back to most grams; else any.
-      const sameFilament = spools.filter(s => s.filament_id === this.form.filament_id);
-      let chosen = sameFilament
-        .filter(s => (s.quantity_grams ?? 0) >= totalGramsNeeded)
-        .sort((a, b) => (b.quantity_grams ?? 0) - (a.quantity_grams ?? 0))[0];
-      if (!chosen) chosen = sameFilament.sort((a, b) => (b.quantity_grams ?? 0) - (a.quantity_grams ?? 0))[0];
-
-      const proceed = (spoolId: number) => {
-        this.api.createJob({
-          project_name: this.form.project_name,
-          printer_id: this.form.printer_id,
-          filament_inventory_id: spoolId,
-          quantity: this.form.quantity,
-          filament_grams: this.form.filament_grams,
-          print_time_hours: this.form.print_time_hours,
-          labor_hours: this.form.labor_hours,
-          supplies_cost: this.form.supplies_cost,
-          packaging_cost: this.form.packaging_cost,
-          sold_value: 0,
-        }).pipe(finalize(() => { this.saving = false; this.cdr.detectChanges(); })).subscribe({
-          next: () => this.toast.success('Orçamento salvo como produção.'),
-          error: (e) => this.toast.error(e?.error?.detail || 'Falha ao salvar produção.'),
-        });
-      };
-
-      if (chosen && chosen.id) {
-        proceed(chosen.id);
-      } else {
-        // Auto-create a placeholder spool so saving always works.
-        const fil = this.filaments.find(f => f.id === this.form.filament_id);
-        this.api.createSpool({
-          filament_id: this.form.filament_id,
-          color: fil?.type || 'Auto',
-          brand: fil?.manufacturer || '',
-          type: fil?.type || '',
-          source: 'Criado pelo Orçamento',
-          purchase_date: new Date().toISOString(),
-          purchase_price: fil?.spool_price || 0,
-          quantity_grams: Math.max(totalGramsNeeded, (fil?.spool_weight_kg || 1) * 1000),
-        }).subscribe({
-          next: (s) => proceed(s.id!),
-          error: () => { this.saving = false; this.toast.error('Falha ao preparar carretel para a produção.'); },
-        });
-      }
+  remove(id: number) {
+    if (this.removing[id]) return;
+    if (!confirm('Remover este orçamento?')) return;
+    this.removing[id] = true;
+    this.api.deleteQuote(id).pipe(finalize(() => { this.removing[id] = false; this.cdr.detectChanges(); })).subscribe({
+      next: () => { this.toast.success('Orçamento removido.'); this.load(); },
+      error: () => this.toast.error('Erro ao remover.'),
     });
+  }
+
+  private empty(): QuoteRequest {
+    return {
+      client: '',
+      product_job_id: null,
+      project_name: '',
+      printer_id: 0,
+      filament_inventory_id: null,
+      filament_id: null,
+      quantity: 1,
+      filament_grams: 0,
+      print_time_hours: 0,
+      labor_hours: 0,
+      supplies_cost: 0,
+      packaging_cost: 0,
+      override_price_per_kg: null,
+      insumos: [],
+      embalagens: [],
+    };
   }
 }

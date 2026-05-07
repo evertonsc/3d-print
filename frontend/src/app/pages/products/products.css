@@ -1,9 +1,0 @@
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.form-grid {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
-  gap: 12px;
-  align-items: end;
-  margin-top: 16px;
-}
-@media (max-width: 900px) { .form-grid { grid-template-columns: 1fr; } }

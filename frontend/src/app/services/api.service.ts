@@ -37,7 +37,6 @@ export interface FilamentSpool {
   purchase_price: number;
   quantity_grams: number;
 
-  // Informações adicionais
   manufacturer?: string;
   diameter_mm?: number;
   density?: number;
@@ -64,47 +63,6 @@ export interface Settings {
   tax: number;
   fixed_fee: number;
   markup: number;
-}
-
-export interface QuoteRequest {
-  project_name: string;
-  printer_id: number;
-  filament_id: number;
-  quantity: number;
-  filament_grams: number;
-  print_time_hours: number;
-  labor_hours: number;
-  supplies_cost: number;
-  packaging_cost: number;
-  override_price_per_kg?: number | null;
-}
-
-export interface QuoteResult {
-  project_name: string;
-  quantity: number;
-  printer: string;
-  filament: string;
-  price_per_kg_used: number;
-  filament_cost: number;
-  energy_cost: number;
-  depreciation_cost: number;
-  labor_cost: number;
-  supplies_cost: number;
-  packaging_cost: number;
-  subtotal: number;
-  final_cost: number;
-  suggested_price: number;
-  marketplace_price: number;
-  per_unit: {
-    filament_cost: number;
-    energy_cost: number;
-    depreciation_cost: number;
-    labor_cost: number;
-    subtotal: number;
-    final_cost: number;
-    suggested_price: number;
-    marketplace_price: number;
-  };
 }
 
 export interface PrintJobRequest {
@@ -136,6 +94,39 @@ export interface PrintJob extends PrintJobRequest {
   suggested_price: number;
   marketplace_price: number;
   profit_pct: number | null;
+  extras?: any;
+}
+
+export interface QuoteRequest {
+  client?: string;
+  product_job_id?: number | null;
+  project_name?: string;
+  printer_id: number;
+  filament_inventory_id?: number | null;
+  filament_id?: number | null;
+  quantity: number;
+  filament_grams: number;
+  print_time_hours: number;
+  labor_hours: number;
+  supplies_cost: number;
+  packaging_cost: number;
+  override_price_per_kg?: number | null;
+  insumos?: { id: number; qty: number }[];
+  embalagens?: { id: number; qty: number }[];
+}
+
+export interface Quote extends QuoteRequest {
+  id: number;
+  date?: string;
+  filament_cost: number;
+  energy_cost: number;
+  depreciation_cost: number;
+  labor_cost: number;
+  subtotal: number;
+  final_cost: number;
+  suggested_price: number;
+  marketplace_price: number;
+  extras?: any;
 }
 
 export interface DreRow {
@@ -167,7 +158,7 @@ export class ApiService {
   updatePrinter(id: number, p: Printer) { return this.http.put<Printer>(`${this.base}/printers/${id}`, p); }
   deletePrinter(id: number) { return this.http.delete(`${this.base}/printers/${id}`); }
 
-  // ---- Filament catalogue (legacy — still available, no longer in UI) ----
+  // ---- Filament catalogue (legacy) ----
   listFilaments(): Observable<Filament[]> { return this.http.get<Filament[]>(`${this.base}/filaments`); }
   createFilament(f: Filament) { return this.http.post<Filament>(`${this.base}/filaments`, f); }
   updateFilament(id: number, f: Filament) { return this.http.put<Filament>(`${this.base}/filaments/${id}`, f); }
@@ -191,14 +182,17 @@ export class ApiService {
   updateStockItem(id: number, s: StockItem) { return this.http.put<StockItem>(`${this.base}/stock-items/${id}`, s); }
   deleteStockItem(id: number) { return this.http.delete(`${this.base}/stock-items/${id}`); }
 
-  // ---- Products ----
+  // ---- Products (legacy) ----
   listProducts(): Observable<any[]> { return this.http.get<any[]>(`${this.base}/products`); }
   createProduct(p: any) { return this.http.post(`${this.base}/products`, p); }
   updateProduct(id: number, p: any) { return this.http.put(`${this.base}/products/${id}`, p); }
   deleteProduct(id: number) { return this.http.delete(`${this.base}/products/${id}`); }
 
-  // ---- Quote / Orçamento ----
-  quote(q: QuoteRequest): Observable<QuoteResult> { return this.http.post<QuoteResult>(`${this.base}/quote`, q); }
+  // ---- Quotes (Orçamentos) — CRUD ----
+  listQuotes(): Observable<Quote[]> { return this.http.get<Quote[]>(`${this.base}/quotes`); }
+  createQuote(q: QuoteRequest): Observable<Quote> { return this.http.post<Quote>(`${this.base}/quotes`, q); }
+  updateQuote(id: number, q: QuoteRequest): Observable<Quote> { return this.http.put<Quote>(`${this.base}/quotes/${id}`, q); }
+  deleteQuote(id: number) { return this.http.delete(`${this.base}/quotes/${id}`); }
 
   // ---- Print jobs ----
   listJobs(): Observable<PrintJob[]> { return this.http.get<PrintJob[]>(`${this.base}/print-jobs`); }

@@ -83,23 +83,29 @@ class PrintJobIn(BaseModel):
     sold_value: float = 0
     date: Optional[datetime] = None
 
-    # New: extras (multi-filamento, insumos, embalagens)
     extra_filament_ids: Optional[List[int]] = []
     insumos: Optional[List[StockItemRef]] = []
     embalagens: Optional[List[StockItemRef]] = []
 
 
 class QuoteIn(BaseModel):
-    project_name: str
+    """Used by both legacy /quote (calculate-only) and new CRUD /quotes."""
+    project_name: str = ""
+    client: Optional[str] = ""
+    product_job_id: Optional[int] = None
     printer_id: int
-    filament_id: int
+    filament_id: Optional[int] = None
+    filament_inventory_id: Optional[int] = None
     quantity: int = 1
-    filament_grams: float
-    print_time_hours: float
+    filament_grams: float = 0
+    print_time_hours: float = 0
     labor_hours: float = 0
     supplies_cost: float = 0
     packaging_cost: float = 0
     override_price_per_kg: Optional[float] = None
+
+    insumos: Optional[List[StockItemRef]] = []
+    embalagens: Optional[List[StockItemRef]] = []
 
 
 class StockItemIn(BaseModel):

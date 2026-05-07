@@ -1,73 +1,95 @@
 <div class="card">
   <div class="card-header">
-    <h2>Orçamento</h2>
+    <h2>Orçamentos</h2>
     <small class="muted">Calcule custo, preço sugerido e preço de marketplace antes de imprimir.</small>
   </div>
 
   <div class="form-grid">
-    <div><label class="label">Nome do projeto <span class="required">*</span></label>
-      <input class="input" [(ngModel)]="form.project_name" required placeholder="Ex.: Vaso Voronoi"></div>
+    <div>
+      <label class="label">Cliente</label>
+      <input class="input" [(ngModel)]="form.client" placeholder="Nome do cliente">
+    </div>
 
-    <div><label class="label">Impressora <span class="required">*</span></label>
+    <div>
+      <label class="label">Produto <span class="required">*</span></label>
+      <select class="input" [(ngModel)]="form.product_job_id" (ngModelChange)="onProductChange()" required>
+        <option [ngValue]="null">Selecione...</option>
+        <option *ngFor="let p of products" [ngValue]="p.id">{{ p.project_name }}</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="label">Impressora <span class="required">*</span></label>
       <select class="input" [(ngModel)]="form.printer_id" required>
         <option [ngValue]="0">Selecione...</option>
         <option *ngFor="let p of printers" [ngValue]="p.id">{{ p.name }}</option>
       </select>
     </div>
 
-    <div><label class="label">Filamento <span class="required">*</span></label>
-      <select class="input" [(ngModel)]="form.filament_id" required>
-        <option [ngValue]="0">Selecione...</option>
-        <option *ngFor="let f of filaments" [ngValue]="f.id">{{ f.name }} (R$ {{ f.price_per_kg | number:'1.2-2' }}/kg)</option>
+    <div>
+      <label class="label">Filamento <span class="required">*</span></label>
+      <select class="input" [(ngModel)]="form.filament_inventory_id" required>
+        <option [ngValue]="null">Selecione...</option>
+        <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
       </select>
     </div>
 
-    <div><label class="label">Quantidade a imprimir <span class="required">*</span></label>
-      <input class="input" type="number" min="1" required [(ngModel)]="form.quantity"></div>
+    <div>
+      <label class="label">Quantidade <span class="required">*</span></label>
+      <input class="input" type="number" min="1" required [(ngModel)]="form.quantity">
+    </div>
 
-    <div><label class="label">Filamento por unidade (g) <span class="required">*</span></label>
-      <input class="input" type="number" required [(ngModel)]="form.filament_grams"></div>
+    <div>
+      <label class="label">Filamento por unidade (g) <span class="required">*</span></label>
+      <input class="input" type="number" required [(ngModel)]="form.filament_grams">
+    </div>
 
-    <div><label class="label">Tempo de impressão por unidade (h)</label>
-      <input class="input" type="number" step="0.1" [(ngModel)]="form.print_time_hours"></div>
-
-    <div><label class="label">Trabalho por unidade (h)</label>
-      <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours"></div>
-
-    <div><label class="label">Insumos por unidade (R$)</label>
-      <input class="input" type="number" step="0.5" [(ngModel)]="form.supplies_cost"></div>
-
-    <div><label class="label">Embalagem por unidade (R$)</label>
-      <input class="input" type="number" step="0.5" [(ngModel)]="form.packaging_cost"></div>
-
-    <div><label class="label">Preço filamento (R$/kg) — opcional, sobrescreve o catálogo</label>
-      <input class="input" type="number" step="0.1" [(ngModel)]="form.override_price_per_kg"
-             placeholder="Use ao comprar carretel mais caro/barato"></div>
+    <div>
+      <label class="label">Trabalho por unidade (h)</label>
+      <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours">
+    </div>
   </div>
 
-  <div style="margin-top:16px; display:flex; gap:12px;">
-    <button class="btn btn-primary" (click)="calculate()" [disabled]="calculating">{{ calculating ? 'Calculando…' : 'Calcular' }}</button>
-    <button class="btn btn-primary" *ngIf="result" (click)="downloadPdf()">⬇ Baixar Orçamento (PDF)</button>
-    <button class="btn" style="background:#0f172a;color:#fff" (click)="saveAsJob()" [disabled]="saving">{{ saving ? 'Salvando…' : 'Salvar como Produção' }}</button>
+  <div style="margin-top:24px; display:flex; gap:12px;">
+    <button class="btn btn-primary" (click)="save()" [disabled]="busy">
+      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar Alterações' : 'Salvar Alterações') }}
+    </button>
+    <button class="btn" *ngIf="editingId != null" (click)="cancelEdit()">Cancelar</button>
   </div>
-
 </div>
 
-<div class="card" style="margin-top:24px;" *ngIf="result">
-  <h3>Resultado do orçamento</h3>
+<div class="card" style="margin-top:24px;">
+  <h3>Orçamentos Registrados</h3>
   <table class="table">
     <thead>
-      <tr><th>Componente</th><th>Por unidade</th><th>Total ({{ result.quantity }} un)</th></tr>
+      <tr>
+        <th>Data</th>
+        <th>Cliente</th>
+        <th>Produto</th>
+        <th>Qtd</th>
+        <th>Custo Final</th>
+        <th>Sugerido</th>
+        <th>Marketplace</th>
+        <th>Ações</th>
+      </tr>
     </thead>
     <tbody>
-      <tr><td>Filamento</td>      <td>R$ {{ result.per_unit.filament_cost | number:'1.2-4' }}</td>     <td>R$ {{ result.filament_cost | number:'1.2-2' }}</td></tr>
-      <tr><td>Energia</td>        <td>R$ {{ result.per_unit.energy_cost | number:'1.2-4' }}</td>       <td>R$ {{ result.energy_cost | number:'1.2-2' }}</td></tr>
-      <tr><td>Depreciação</td>    <td>R$ {{ result.per_unit.depreciation_cost | number:'1.2-4' }}</td> <td>R$ {{ result.depreciation_cost | number:'1.2-2' }}</td></tr>
-      <tr><td>Trabalho</td>       <td>R$ {{ result.per_unit.labor_cost | number:'1.2-4' }}</td>        <td>R$ {{ result.labor_cost | number:'1.2-2' }}</td></tr>
-      <tr><td>Subtotal</td>       <td><b>R$ {{ result.per_unit.subtotal | number:'1.2-2' }}</b></td>   <td><b>R$ {{ result.subtotal | number:'1.2-2' }}</b></td></tr>
-      <tr><td>Custo final (c/ taxa de falha)</td><td><b>R$ {{ result.per_unit.final_cost | number:'1.2-2' }}</b></td><td><b>R$ {{ result.final_cost | number:'1.2-2' }}</b></td></tr>
-      <tr><td>Preço sugerido (180% acima do custo final)</td> <td><b>R$ {{ result.per_unit.suggested_price | number:'1.2-2' }}</b></td><td><b>R$ {{ result.suggested_price | number:'1.2-2' }}</b></td></tr>
-      <tr><td>Preço marketplace</td><td><b>R$ {{ result.per_unit.marketplace_price | number:'1.2-2' }}</b></td><td><b>R$ {{ result.marketplace_price | number:'1.2-2' }}</b></td></tr>
+      <tr *ngFor="let q of quotes">
+        <td>{{ q.date | date:'dd/MM/yy' }}</td>
+        <td>{{ q.client }}</td>
+        <td>{{ q.project_name }}</td>
+        <td>{{ q.quantity }}</td>
+        <td><b>R$ {{ q.final_cost | number:'1.2-2' }}</b></td>
+        <td>R$ {{ q.suggested_price | number:'1.2-2' }}</td>
+        <td>R$ {{ q.marketplace_price | number:'1.2-2' }}</td>
+        <td>
+          <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(q)">✎</button>
+          <button class="btn btn-danger" (click)="remove(q.id)" [disabled]="removing[q.id!]">
+            {{ removing[q.id!] ? '…' : '🗑' }}
+          </button>
+        </td>
+      </tr>
+      <tr *ngIf="!quotes.length"><td colspan="8" class="muted" style="text-align:center;padding:24px;">Nenhum orçamento ainda.</td></tr>
     </tbody>
   </table>
 </div>

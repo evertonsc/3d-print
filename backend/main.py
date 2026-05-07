@@ -705,3 +705,153 @@ def delete_stock_item(sid: int, db: Session = Depends(get_db)):
     if not s: raise HTTPException(404, "Stock item not found")
     db.delete(s); db.commit()
     return {"ok": True}
+
+
+# ============================================================
+# Quotes (Orçamentos) — CRUD
+# ============================================================
+def _quote_dict(q: models.Quote) -> dict:
+    return {
+        "id": q.id,
+        "date": q.date.isoformat() if q.date else None,
+        "client": q.client or "",
+        "product_job_id": q.product_job_id,
+        "project_name": q.project_name or "",
+        "printer_id": q.printer_id,
+        "filament_inventory_id": q.filament_inventory_id,
+        "quantity": q.quantity,
+        "filament_grams": q.filament_grams,
+        "print_time_hours": q.print_time_hours,
+        "labor_hours": q.labor_hours,
+        "supplies_cost": q.supplies_cost,
+        "packaging_cost": q.packaging_cost,
+        "filament_cost": q.filament_cost,
+        "energy_cost": q.energy_cost,
+        "depreciation_cost": q.depreciation_cost,
+        "labor_cost": q.labor_cost,
+        "subtotal": q.subtotal,
+        "final_cost": q.final_cost,
+        "suggested_price": q.suggested_price,
+        "marketplace_price": q.marketplace_price,
+        "extras": _parse_extras(q.extras_json),
+    }
+
+
+def _compute_for_quote(db, payload: schemas.QuoteIn):
+    settings = db.query(models.Settings).first()
+    printer = db.get(models.Printer, payload.printer_id)
+    if not settings: raise HTTPException(500, "Settings not configured")
+    if not printer:  raise HTTPException(404, "Printer not found")
+
+    qty = max(1, payload.quantity or 1)
+
+    # Filament price/kg
+    price_per_kg = 0.0
+    if payload.filament_inventory_id:
+        spool = db.get(models.FilamentInventory, payload.filament_inventory_id)
+        if spool and spool.purchase_price:
+            cat = db.get(models.Filament, spool.filament_id) if spool.filament_id else None
+            spool_kg = (cat.spool_weight_kg if cat else 1.0) or 1.0
+            price_per_kg = spool.purchase_price / spool_kg
+    if not price_per_kg and payload.filament_id:
+        fil = db.get(models.Filament, payload.filament_id)
+        if fil: price_per_kg = fil.price_per_kg
+    if payload.override_price_per_kg is not None:
+        price_per_kg = payload.override_price_per_kg
+
+    # Insumos / embalagens cost
+    insumos = [i.dict() if hasattr(i, "dict") else i for i in (payload.insumos or [])]
+    embalagens = [i.dict() if hasattr(i, "dict") else i for i in (payload.embalagens or [])]
+    sup_total = 0.0
+    for it in insumos:
+        si = db.get(models.StockItem, it.get("id"))
+        if si: sup_total += (si.unit_price or 0.0) * float(it.get("qty") or 0) * qty
+    pack_total = 0.0
+    for it in embalagens:
+        si = db.get(models.StockItem, it.get("id"))
+        if si: pack_total += (si.unit_price or 0.0) * float(it.get("qty") or 0) * qty
+
+    breakdown = compute(
+        grams=(payload.filament_grams or 0) * qty,
+        print_time_hours=(payload.print_time_hours or 0) * qty,
+        labor_hours=(payload.labor_hours or 0) * qty,
+        supplies_cost=(payload.supplies_cost or 0) * qty + sup_total,
+        packaging_cost=(payload.packaging_cost or 0) * qty + pack_total,
+        filament_price_per_kg=price_per_kg,
+        printer_avg_power_kwh=printer.avg_power_kwh,
+        printer_depreciation_per_hour=printer.depreciation_per_hour,
+        settings=settings,
+        quantity=qty,
+    )
+    extras_json = json.dumps({"insumos": insumos, "embalagens": embalagens})
+    return breakdown, qty, extras_json
+
+
+@app.get("/quotes")
+def list_quotes(db: Session = Depends(get_db)):
+    return [_quote_dict(q) for q in db.query(models.Quote).order_by(models.Quote.date.desc()).all()]
+
+
+@app.post("/quotes")
+def create_quote(payload: schemas.QuoteIn, db: Session = Depends(get_db)):
+    b, qty, extras_json = _compute_for_quote(db, payload)
+    q = models.Quote(
+        date=datetime.utcnow(),
+        client=payload.client or "",
+        product_job_id=payload.product_job_id,
+        project_name=payload.project_name or "",
+        printer_id=payload.printer_id,
+        filament_inventory_id=payload.filament_inventory_id,
+        quantity=qty,
+        filament_grams=(payload.filament_grams or 0) * qty,
+        print_time_hours=(payload.print_time_hours or 0) * qty,
+        labor_hours=(payload.labor_hours or 0) * qty,
+        supplies_cost=b.subtotal and 0,
+        packaging_cost=0,
+        filament_cost=b.filament_cost,
+        energy_cost=b.energy_cost,
+        depreciation_cost=b.depreciation_cost,
+        labor_cost=b.labor_cost,
+        subtotal=b.subtotal,
+        final_cost=b.final_cost,
+        suggested_price=b.suggested_price,
+        marketplace_price=b.marketplace_price,
+        extras_json=extras_json,
+    )
+    db.add(q); db.commit(); db.refresh(q)
+    return _quote_dict(q)
+
+
+@app.put("/quotes/{qid}")
+def update_quote(qid: int, payload: schemas.QuoteIn, db: Session = Depends(get_db)):
+    q = db.get(models.Quote, qid)
+    if not q: raise HTTPException(404, "Quote not found")
+    b, qty, extras_json = _compute_for_quote(db, payload)
+    q.client = payload.client or ""
+    q.product_job_id = payload.product_job_id
+    q.project_name = payload.project_name or ""
+    q.printer_id = payload.printer_id
+    q.filament_inventory_id = payload.filament_inventory_id
+    q.quantity = qty
+    q.filament_grams = (payload.filament_grams or 0) * qty
+    q.print_time_hours = (payload.print_time_hours or 0) * qty
+    q.labor_hours = (payload.labor_hours or 0) * qty
+    q.filament_cost = b.filament_cost
+    q.energy_cost = b.energy_cost
+    q.depreciation_cost = b.depreciation_cost
+    q.labor_cost = b.labor_cost
+    q.subtotal = b.subtotal
+    q.final_cost = b.final_cost
+    q.suggested_price = b.suggested_price
+    q.marketplace_price = b.marketplace_price
+    q.extras_json = extras_json
+    db.commit(); db.refresh(q)
+    return _quote_dict(q)
+
+
+@app.delete("/quotes/{qid}")
+def delete_quote(qid: int, db: Session = Depends(get_db)):
+    q = db.get(models.Quote, qid)
+    if not q: raise HTTPException(404, "Quote not found")
+    db.delete(q); db.commit()
+    return {"ok": True}

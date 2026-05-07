@@ -30,12 +30,49 @@
   border-bottom: 1px solid var(--border, #e5e7eb);
 }
 .modal-header h3 { margin: 0; }
-.modal-body {
-  padding: 20px;
-  overflow-y: auto;
-}
+.modal-body { padding: 20px; overflow-y: auto; }
 .modal-footer {
   display:flex; justify-content:flex-end; gap:8px;
   padding: 12px 20px;
   border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* ===== Tooltip (CSS only) ===== */
+.th-with-info { display:inline-flex; align-items:center; gap:4px; }
+.tip { position: relative; display: inline-block; cursor: help; }
+.tip-trigger { display: inline-block; }
+.th-with-info .tip-trigger {
+  color: #64748b; font-weight: normal; font-size: 0.9em;
+}
+.tip-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: normal;
+  white-space: nowrap;
+  z-index: 1500;
+  pointer-events: none;
+  transition: opacity .15s ease;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+.tip-content::after {
+  content: "";
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #0f172a;
+}
+.tip:hover .tip-content,
+.tip:focus-within .tip-content {
+  visibility: visible;
+  opacity: 1;
 }

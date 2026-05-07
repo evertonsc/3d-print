@@ -1,7 +1,7 @@
 import { Component, ChangeDetectorRef, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ApiService, FilamentSpool, Printer, PrintJob, PrintJobRequest, StockItem } from '../../services/api.service';
+import { ApiService, FilamentSpool, Printer, PrintJob, PrintJobRequest, Settings, StockItem } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { finalize } from 'rxjs/operators';
 
@@ -12,6 +12,7 @@ interface ModalCfg {
   kind: 'filamento' | 'insumo' | 'embalagem';
   title: string;
   fieldLabel: string;
+  qtyLabel: string;
   addLabel: string;
   options: any[];
   optionLabel: (o: any) => string;
@@ -39,17 +40,17 @@ export class Production implements OnInit {
   insumosCat: StockItem[] = [];
   embalagensCat: StockItem[] = [];
 
+  settings: Settings | null = null;
+
   busy = false;
   removing: Record<number, boolean> = {};
 
   editingId: number | null = null;
 
-  // Listas persistidas via modais
   filamentos: Row[] = [];
   insumos: Row[] = [];
   embalagens: Row[] = [];
 
-  // Estado do modal aberto
   modalCfg: ModalCfg | null = null;
   draft: Row = { id: 0, qty: 1 };
 
@@ -60,6 +61,7 @@ export class Production implements OnInit {
     this.api.listSpools().subscribe(d => { this.spools = d; this.cdr.detectChanges(); });
     this.api.listStockItems('supply').subscribe(d => { this.insumosCat = d; this.cdr.detectChanges(); });
     this.api.listStockItems('packaging').subscribe(d => { this.embalagensCat = d; this.cdr.detectChanges(); });
+    this.api.getSettings().subscribe(s => { this.settings = s; this.cdr.detectChanges(); });
     this.load();
   }
 
@@ -71,12 +73,54 @@ export class Production implements OnInit {
     return `${s.color} ${s.brand ? '— ' + s.brand : ''} (${s.quantity_grams|0}g restantes)`;
   }
 
+  // ========== Tooltips ==========
+  private fmt(n: number): string {
+    return (n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  finalCostTip(j: PrintJob): string {
+    const ex: any = (j as any).extras || {};
+    let supTotal = 0;
+    for (const it of (ex.insumos || [])) {
+      const cat = this.insumosCat.find(x => x.id === it.id);
+      supTotal += (cat?.unit_price || 0) * (it.qty || 0);
+    }
+    let packTotal = 0;
+    for (const it of (ex.embalagens || [])) {
+      const cat = this.embalagensCat.find(x => x.id === it.id);
+      packTotal += (cat?.unit_price || 0) * (it.qty || 0);
+    }
+    const prod = (j.final_cost || 0) - supTotal - packTotal;
+    return `<b>Custo de produção:</b> R$ ${this.fmt(prod)}<br>`
+         + `<b>Insumos:</b> R$ ${this.fmt(supTotal)}<br>`
+         + `<b>Embalagens:</b> R$ ${this.fmt(packTotal)}`;
+  }
+
+  filamCostTip(j: PrintJob): string {
+    const ex: any = (j as any).extras || {};
+    const list: { id: number; qty: number }[] = (ex.filamentos_full && ex.filamentos_full.length)
+      ? ex.filamentos_full
+      : [{ id: j.filament_inventory_id, qty: j.filament_grams || 0 }];
+    const totalGrams = list.reduce((s, r) => s + (r.qty || 0), 0) || 1;
+    const totalCost = j.filament_cost || 0;
+    const lines: string[] = [];
+    for (const r of list) {
+      const sp = this.spools.find(s => s.id === r.id);
+      const name = sp ? this.spoolLabel(sp) : `#${r.id}`;
+      const share = (r.qty || 0) / totalGrams;
+      const cost = totalCost * share;
+      lines.push(`<b>${name}:</b> R$ ${this.fmt(cost)}`);
+    }
+    return lines.join('<br>') || '—';
+  }
+
   // ========== Modais ==========
   openFilamentos() {
     this.modalCfg = {
       kind: 'filamento',
       title: 'Adicionar Filamento',
       fieldLabel: 'Filamento',
+      qtyLabel: 'Quantidade (g)',
       addLabel: 'Adicionar Filamento',
       options: this.spools,
       optionLabel: (s: FilamentSpool) => this.spoolLabel(s),
@@ -96,6 +140,7 @@ export class Production implements OnInit {
       kind: 'insumo',
       title: 'Adicionar Insumo',
       fieldLabel: 'Insumo',
+      qtyLabel: 'Quantidade (unid)',
       addLabel: 'Adicionar Insumo',
       options: this.insumosCat,
       optionLabel: (s: StockItem) => s.description,
@@ -112,6 +157,7 @@ export class Production implements OnInit {
       kind: 'embalagem',
       title: 'Adicionar Embalagem',
       fieldLabel: 'Embalagem',
+      qtyLabel: 'Quantidade (unid)',
       addLabel: 'Adicionar Embalagem',
       options: this.embalagensCat,
       optionLabel: (s: StockItem) => s.description,
@@ -171,7 +217,6 @@ export class Production implements OnInit {
       extra_filament_ids: extras,
       insumos: this.insumos.filter(r => r.id && r.qty > 0),
       embalagens: this.embalagens.filter(r => r.id && r.qty > 0),
-      // anexa lista completa de filamentos (com qty) para reabrir o modal na edição
       filamentos_full: this.filamentos,
     };
 
@@ -217,10 +262,9 @@ export class Production implements OnInit {
       labor_hours: j.labor_hours || 0,
       supplies_cost: 0,
       packaging_cost: 0,
-      sold_value: j.sold_value || 0,
+      sold_value: 0,
     };
     const ex: any = (j as any).extras || {};
-    // Reidrata a lista completa de filamentos
     if (Array.isArray(ex.filamentos_full) && ex.filamentos_full.length) {
       this.filamentos = ex.filamentos_full.map((x: any) => ({ id: x.id, qty: x.qty || 1 }));
     } else {

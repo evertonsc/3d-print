@@ -129,7 +129,6 @@ class PrintJob(Base):
     marketplace_price = Column(Float, default=0.0)
     sold_value = Column(Float, default=0.0)
 
-    # JSON-encoded extras: {"extra_filament_ids":[...], "insumos":[{"id":1,"qty":2}], "embalagens":[{"id":1,"qty":1}]}
     extras_json = Column(Text, default="")
 
 
@@ -148,3 +147,36 @@ class StockItem(Base):
         if self.purchased_qty and self.purchased_qty > 0:
             return (self.valor or 0.0) / self.purchased_qty
         return 0.0
+
+
+# --------------------------------------------------------------
+# Quotes / Orçamentos (CRUD)
+# --------------------------------------------------------------
+class Quote(Base):
+    __tablename__ = "quotes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, default=datetime.utcnow)
+    client = Column(String, default="")
+    product_job_id = Column(Integer, ForeignKey("print_jobs.id"), nullable=True)
+    project_name = Column(String, default="")
+    printer_id = Column(Integer, ForeignKey("printers.id"), nullable=True)
+    filament_inventory_id = Column(Integer, ForeignKey("filament_inventory.id"), nullable=True)
+    quantity = Column(Integer, default=1)
+
+    filament_grams = Column(Float, default=0.0)
+    print_time_hours = Column(Float, default=0.0)
+    labor_hours = Column(Float, default=0.0)
+    supplies_cost = Column(Float, default=0.0)
+    packaging_cost = Column(Float, default=0.0)
+
+    filament_cost = Column(Float, default=0.0)
+    energy_cost = Column(Float, default=0.0)
+    depreciation_cost = Column(Float, default=0.0)
+    labor_cost = Column(Float, default=0.0)
+    subtotal = Column(Float, default=0.0)
+    final_cost = Column(Float, default=0.0)
+    suggested_price = Column(Float, default=0.0)
+    marketplace_price = Column(Float, default=0.0)
+
+    extras_json = Column(Text, default="")

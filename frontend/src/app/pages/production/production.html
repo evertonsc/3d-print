@@ -32,11 +32,6 @@
       <label class="label">Trabalho (h)</label>
       <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours">
     </div>
-
-    <div>
-      <label class="label">Valor vendido total (R$)</label>
-      <input class="input" type="number" step="0.5" [(ngModel)]="form.sold_value">
-    </div>
   </div>
 
   <!-- Botões dos modais -->
@@ -65,28 +60,60 @@
   <table class="table">
     <thead>
       <tr>
-        <th>Data</th><th>Produto</th><th>g</th>
-        <th>Custo Filam.</th><th>Energia</th><th>Dep.</th><th>Trab.</th>
-        <th>Custo Final</th><th>Sugerido</th><th>Marketplace</th>
-        <th>Vendido</th><th>Lucro %</th><th>Ações</th>
+        <th>Produto</th>
+        <th>Tempo (h)</th>
+        <th>Peso total (g)</th>
+        <th>Custo Filam.</th>
+        <th>Energia</th>
+        <th>Dep.</th>
+        <th>Trabalho (h)</th>
+        <th>Custo Final</th>
+        <th>
+          <span class="th-with-info">
+            Sugerido
+            <span class="tip">
+              <span class="tip-trigger">ⓘ</span>
+              <span class="tip-content"><b>Markup:</b> {{ settings?.markup ?? 0 }}</span>
+            </span>
+          </span>
+        </th>
+        <th>
+          <span class="th-with-info">
+            Marketplace
+            <span class="tip">
+              <span class="tip-trigger">ⓘ</span>
+              <span class="tip-content">
+                O valor desta coluna é o resultado da multiplicação do valor da coluna Sugerido pelo valor da Taxa do Marketplace<br>
+                <b>Taxa:</b> {{ ((settings?.marketplace_fee ?? 0) * 100) | number:'1.0-2' }}%
+              </span>
+            </span>
+          </span>
+        </th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody>
       <tr *ngFor="let j of jobs">
-        <td>{{ j.date | date:'dd/MM/yy' }}</td>
         <td>{{ j.project_name }}</td>
+        <td>{{ j.print_time_hours | number:'1.0-2' }}</td>
         <td>{{ j.filament_grams | number:'1.0-0' }}</td>
-        <td>R$ {{ j.filament_cost | number:'1.2-2' }}</td>
+        <td>
+          <span class="tip">
+            <span class="tip-trigger">R$ {{ j.filament_cost | number:'1.2-2' }}</span>
+            <span class="tip-content" [innerHTML]="filamCostTip(j)"></span>
+          </span>
+        </td>
         <td>R$ {{ j.energy_cost | number:'1.2-2' }}</td>
         <td>R$ {{ j.depreciation_cost | number:'1.2-2' }}</td>
-        <td>R$ {{ j.labor_cost | number:'1.2-2' }}</td>
-        <td><b>R$ {{ j.final_cost | number:'1.2-2' }}</b></td>
+        <td>{{ j.labor_hours | number:'1.0-2' }}</td>
+        <td>
+          <span class="tip">
+            <span class="tip-trigger"><b>R$ {{ j.final_cost | number:'1.2-2' }}</b></span>
+            <span class="tip-content" [innerHTML]="finalCostTip(j)"></span>
+          </span>
+        </td>
         <td>R$ {{ j.suggested_price | number:'1.2-2' }}</td>
         <td>R$ {{ j.marketplace_price | number:'1.2-2' }}</td>
-        <td>R$ {{ j.sold_value | number:'1.2-2' }}</td>
-        <td [class.positive]="(j.profit_pct||0) >= 0" [class.danger]="(j.profit_pct||0) < 0">
-          {{ j.profit_pct !== null ? ((j.profit_pct! * 100) | number:'1.1-1') + '%' : '—' }}
-        </td>
         <td>
           <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(j)">✎</button>
           <button class="btn btn-danger" (click)="remove(j.id)" [disabled]="removing[j.id!]">
@@ -94,7 +121,7 @@
           </button>
         </td>
       </tr>
-      <tr *ngIf="!jobs.length"><td colspan="13" class="muted" style="text-align:center;padding:24px;">Nenhum produto ainda.</td></tr>
+      <tr *ngIf="!jobs.length"><td colspan="11" class="muted" style="text-align:center;padding:24px;">Nenhum produto ainda.</td></tr>
     </tbody>
   </table>
 </div>
@@ -118,7 +145,7 @@
           </select>
         </div>
         <div>
-          <label class="label">Quantidade <span class="required">*</span></label>
+          <label class="label">{{ cfg.qtyLabel }} <span class="required">*</span></label>
           <input class="input" type="number" min="0" step="1" [(ngModel)]="draft.qty">
         </div>
         <div style="align-self:end;">
@@ -130,7 +157,7 @@
         <thead>
           <tr>
             <th>{{ cfg.fieldLabel }}</th>
-            <th>Quantidade</th>
+            <th>{{ cfg.qtyLabel }}</th>
             <th style="width:80px;">Ações</th>
           </tr>
         </thead>
