@@ -9,16 +9,12 @@ Per-unit columns from the spreadsheet, expressed here as functions:
     M  labor_cost        = labor_hours * settings.labor_cost_per_hour
     N  subtotal          = J + K + L + M + supplies + packaging
     O  final_cost        = N * (1 + failure_rate/100)
-    P  suggested_price   = O * 2.8           (180% ABOVE final cost)
-    Q  marketplace_price = P / (1 - marketplace_fee - tax) + fixed_fee
+    P  suggested_price   = O * settings.markup           (Markup column)
+    Q  marketplace_price = P * settings.marketplace_fee  (Marketplace column)
     U  profit_pct        = (sold - O) / O
 """
 from dataclasses import dataclass, asdict
 from typing import Optional
-
-
-# Suggested price is 180% ABOVE the final cost: price = cost + 180%*cost = cost * 2.8
-SUGGESTED_PRICE_MULTIPLIER = 2.8
 
 
 @dataclass
@@ -69,28 +65,25 @@ def compute(
     subtotal = filament_cost + energy_cost + depreciation_cost + labor_cost + supplies_cost + packaging_cost
     final_cost = subtotal * (1.0 + (settings.failure_rate or 0.0) / 100.0)
 
-    # Requirement: suggested price must be 180% ABOVE final cost.
-    suggested_price = final_cost * SUGGESTED_PRICE_MULTIPLIER
+    # Markup column: final_cost * settings.markup
+    suggested_price = final_cost * (settings.markup or 0.0)
 
-    fee_factor = 1.0 - (settings.marketplace_fee or 0.0) - (settings.tax or 0.0)
-    if fee_factor <= 0:
-        marketplace_price = suggested_price + (settings.fixed_fee or 0.0)
-    else:
-        marketplace_price = suggested_price / fee_factor + (settings.fixed_fee or 0.0)
+    # Marketplace column: suggested_price * marketplace_fee
+    marketplace_price = suggested_price * (settings.marketplace_fee or 0.0)
 
     profit_pct = None
     if sold_value not in (None, 0) and final_cost:
         profit_pct = (sold_value - final_cost) / final_cost
 
     return CostBreakdown(
-        filament_cost=round(filament_cost, 4),
-        energy_cost=round(energy_cost, 4),
-        depreciation_cost=round(depreciation_cost, 4),
-        labor_cost=round(labor_cost, 4),
-        supplies_cost=round(supplies_cost, 4),
-        packaging_cost=round(packaging_cost, 4),
-        subtotal=round(subtotal, 4),
-        final_cost=round(final_cost, 4),
+        filament_cost=round(filament_cost, 2),
+        energy_cost=round(energy_cost, 2),
+        depreciation_cost=round(depreciation_cost, 2),
+        labor_cost=round(labor_cost, 2),
+        supplies_cost=round(supplies_cost, 2),
+        packaging_cost=round(packaging_cost, 2),
+        subtotal=round(subtotal, 2),
+        final_cost=round(final_cost, 2),
         suggested_price=round(suggested_price, 2),
         marketplace_price=round(marketplace_price, 2),
         profit_pct=round(profit_pct, 4) if profit_pct is not None else None,

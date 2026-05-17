@@ -17,6 +17,7 @@ interface ModalCfg {
   options: any[];
   optionLabel: (o: any) => string;
   labelFor: (id: number) => string;
+  unitPriceFor: (id: number) => number;
   rows: Row[];
   successMsg: string;
 }
@@ -115,6 +116,17 @@ export class Production implements OnInit {
   }
 
   // ========== Modais ==========
+  modalTotalFilamentos(cfg: ModalCfg): number {
+    return cfg.rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  }
+  modalTotalQty(cfg: ModalCfg): number {
+    let total = 0;
+    for (const r of cfg.rows) {
+      total += cfg.unitPriceFor(r.id) * (Number(r.qty) || 0);
+    }
+    return total;
+  }
+
   openFilamentos() {
     this.modalCfg = {
       kind: 'filamento',
@@ -128,6 +140,7 @@ export class Production implements OnInit {
         const s = this.spools.find(x => x.id === id);
         return s ? this.spoolLabel(s) : `#${id}`;
       },
+      unitPriceFor: () => 0,
       rows: this.filamentos.map(r => ({ ...r })),
       successMsg: 'Filamento(s) salvo(s)',
     };
@@ -145,6 +158,7 @@ export class Production implements OnInit {
       options: this.insumosCat,
       optionLabel: (s: StockItem) => s.description,
       labelFor: (id: number) => this.insumosCat.find(x => x.id === id)?.description || `#${id}`,
+      unitPriceFor: (id: number) => this.insumosCat.find(x => x.id === id)?.unit_price || 0,
       rows: this.insumos.map(r => ({ ...r })),
       successMsg: 'Insumo(s) salvo(s)',
     };
@@ -162,6 +176,7 @@ export class Production implements OnInit {
       options: this.embalagensCat,
       optionLabel: (s: StockItem) => s.description,
       labelFor: (id: number) => this.embalagensCat.find(x => x.id === id)?.description || `#${id}`,
+      unitPriceFor: (id: number) => this.embalagensCat.find(x => x.id === id)?.unit_price || 0,
       rows: this.embalagens.map(r => ({ ...r })),
       successMsg: 'Embalagem(ns) salva(s)',
     };
@@ -195,7 +210,7 @@ export class Production implements OnInit {
   // ========== Submit ==========
   produce() {
     if (this.busy) return;
-    if (!this.form.project_name || !this.form.printer_id || !this.form.filament_grams) {
+    if (!this.form.project_name || !this.form.printer_id) {
       this.toast.error('Preencha os campos obrigatórios (*).');
       return;
     }
@@ -209,10 +224,12 @@ export class Production implements OnInit {
     }
 
     const primary = this.filamentos[0];
+    const totalGrams = this.filamentos.reduce((s, r) => s + (Number(r.qty) || 0), 0);
     const extras = this.filamentos.slice(1).map(r => r.id).filter(Boolean);
 
     const payload: any = {
       ...this.form,
+      filament_grams: totalGrams,
       filament_inventory_id: primary.id,
       extra_filament_ids: extras,
       insumos: this.insumos.filter(r => r.id && r.qty > 0),
@@ -268,7 +285,7 @@ export class Production implements OnInit {
     if (Array.isArray(ex.filamentos_full) && ex.filamentos_full.length) {
       this.filamentos = ex.filamentos_full.map((x: any) => ({ id: x.id, qty: x.qty || 1 }));
     } else {
-      this.filamentos = [{ id: j.filament_inventory_id, qty: 1 }];
+      this.filamentos = [{ id: j.filament_inventory_id, qty: j.filament_grams || 1 }];
       for (const fid of (ex.extra_filament_ids || [])) {
         if (fid) this.filamentos.push({ id: fid, qty: 1 });
       }

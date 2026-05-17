@@ -40,9 +40,8 @@
         <td>{{ s.purchased_qty | number:'1.0-2' }}</td>
         <td>R$ {{ s.unit_price | number:'1.2-4' }}</td>
         <td>{{ s.available_qty | number:'1.0-2' }}</td>
-        <td>
-          <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(s)">✎</button>
-          <button class="btn btn-danger" (click)="remove(s.id)" [disabled]="removing[s.id!]">{{ removing[s.id!] ? '…' : '🗑' }}</button>
+        <td class="actions"><button class="btn btn-edit btn-icon" title="Editar" (click)="edit(s)">✏️</button>
+          <button class="btn btn-danger btn-icon" title="Excluir" (click)="remove(s.id)" [disabled]="removing[s.id!]">{{ removing[s.id!] ? '…' : '🗑️' }}</button>
         </td>
       </tr>
       <tr *ngIf="!items.length"><td colspan="6" class="muted" style="text-align:center;padding:24px;">Nenhum item cadastrado.</td></tr>

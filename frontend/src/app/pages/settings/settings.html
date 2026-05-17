@@ -36,9 +36,8 @@
         <td>{{p.name}}</td><td>{{p.manufacturer}}</td><td>R$ {{p.price | number:'1.2-2'}}</td>
         <td>{{p.depreciation_hours}}</td><td>R$ {{p.depreciation_per_hour | number:'1.4-4'}}</td>
         <td>{{p.avg_power_kwh}}</td>
-        <td>
-          <button class="btn btn-primary btn-icon" title="Editar" (click)="editPrinter(p)">✎</button>
-          <button class="btn btn-danger" (click)="delPrinter(p.id)" [disabled]="removingPrinter[p.id!]">{{ removingPrinter[p.id!] ? '…' : '🗑' }}</button>
+        <td class="actions"><button class="btn btn-edit btn-icon" title="Editar" (click)="editPrinter(p)">✏️</button>
+          <button class="btn btn-danger btn-icon" title="Excluir" (click)="delPrinter(p.id)" [disabled]="removingPrinter[p.id!]">{{ removingPrinter[p.id!] ? '…' : '🗑️' }}</button>
         </td>
       </tr>
       <tr *ngIf="!printers.length"><td colspan="7" class="muted" style="text-align:center;padding:16px;">Nenhuma impressora cadastrada.</td></tr>

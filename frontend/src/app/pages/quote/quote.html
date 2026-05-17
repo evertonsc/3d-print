@@ -27,32 +27,42 @@
     </div>
 
     <div>
-      <label class="label">Filamento <span class="required">*</span></label>
-      <select class="input" [(ngModel)]="form.filament_inventory_id" required>
-        <option [ngValue]="null">Selecione...</option>
-        <option *ngFor="let s of spools" [ngValue]="s.id">{{ spoolLabel(s) }}</option>
-      </select>
-    </div>
-
-    <div>
       <label class="label">Quantidade <span class="required">*</span></label>
       <input class="input" type="number" min="1" required [(ngModel)]="form.quantity">
     </div>
 
     <div>
-      <label class="label">Filamento por unidade (g) <span class="required">*</span></label>
-      <input class="input" type="number" required [(ngModel)]="form.filament_grams">
+      <label class="label">Valor unitário (R$)</label>
+      <input class="input" type="number" step="0.01" [(ngModel)]="form.unit_value">
     </div>
 
     <div>
-      <label class="label">Trabalho por unidade (h)</label>
+      <label class="label">Tempo (h) <span class="required">*</span></label>
+      <input class="input" type="number" step="0.1" required [(ngModel)]="form.print_time_hours">
+    </div>
+
+    <div>
+      <label class="label">Trabalho (h)</label>
       <input class="input" type="number" step="0.25" [(ngModel)]="form.labor_hours">
     </div>
   </div>
 
+  <!-- Botões dos modais (mesmo padrão da página Produtos) -->
+  <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
+    <button class="btn" type="button" (click)="openFilamentos()">
+      + Adicionar Filamento <span *ngIf="filamentos.length" class="muted">({{ filamentos.length }})</span>
+    </button>
+    <button class="btn" type="button" (click)="openInsumos()">
+      + Adicionar Insumo <span *ngIf="insumos.length" class="muted">({{ insumos.length }})</span>
+    </button>
+    <button class="btn" type="button" (click)="openEmbalagens()">
+      + Adicionar Embalagem <span *ngIf="embalagens.length" class="muted">({{ embalagens.length }})</span>
+    </button>
+  </div>
+
   <div style="margin-top:24px; display:flex; gap:12px;">
     <button class="btn btn-primary" (click)="save()" [disabled]="busy">
-      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar Alterações' : 'Salvar Alterações') }}
+      {{ busy ? 'Salvando…' : (editingId != null ? 'Salvar Alterações' : 'Salvar') }}
     </button>
     <button class="btn" *ngIf="editingId != null" (click)="cancelEdit()">Cancelar</button>
   </div>
@@ -68,8 +78,24 @@
         <th>Produto</th>
         <th>Qtd</th>
         <th>Custo Final</th>
-        <th>Sugerido</th>
-        <th>Marketplace</th>
+        <th>
+          <span class="th-with-info">
+            Markup
+            <span class="tip">
+              <span class="tip-trigger">🛈</span>
+              <span class="tip-content"><b>Markup:</b> {{ settings?.markup ?? 0 }}</span>
+            </span>
+          </span>
+        </th>
+        <th>
+          <span class="th-with-info">
+            Marketplace
+            <span class="tip">
+              <span class="tip-trigger">🛈</span>
+              <span class="tip-content"><b>Taxa Marketplace:</b> {{ ((settings?.marketplace_fee ?? 0) * 100) | number:'1.0-2' }}%</span>
+            </span>
+          </span>
+        </th>
         <th>Ações</th>
       </tr>
     </thead>
@@ -82,10 +108,10 @@
         <td><b>R$ {{ q.final_cost | number:'1.2-2' }}</b></td>
         <td>R$ {{ q.suggested_price | number:'1.2-2' }}</td>
         <td>R$ {{ q.marketplace_price | number:'1.2-2' }}</td>
-        <td>
-          <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(q)">✎</button>
-          <button class="btn btn-danger" (click)="remove(q.id)" [disabled]="removing[q.id!]">
-            {{ removing[q.id!] ? '…' : '🗑' }}
+        <td class="actions">
+          <button class="btn btn-edit btn-icon" title="Editar" (click)="edit(q)">✏️</button>
+          <button class="btn btn-danger btn-icon" title="Excluir" (click)="remove(q.id)" [disabled]="removing[q.id!]">
+            {{ removing[q.id!] ? '…' : '🗑️' }}
           </button>
         </td>
       </tr>
@@ -93,3 +119,76 @@
     </tbody>
   </table>
 </div>
+
+<!-- ========== MODAL GENÉRICO ========== -->
+<ng-template #modalTpl let-cfg>
+  <div class="modal-backdrop" (click)="closeModal()"></div>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>{{ cfg.title }}</h3>
+      <button class="btn btn-icon" type="button" (click)="closeModal()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-grid">
+        <div>
+          <label class="label">{{ cfg.fieldLabel }} <span class="required">*</span></label>
+          <select class="input" [(ngModel)]="draft.id">
+            <option [ngValue]="0">Selecione...</option>
+            <option *ngFor="let opt of cfg.options" [ngValue]="opt.id">{{ cfg.optionLabel(opt) }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">{{ cfg.qtyLabel }} <span class="required">*</span></label>
+          <input class="input" type="number" min="0" step="1" [(ngModel)]="draft.qty">
+        </div>
+        <div style="align-self:end;">
+          <button class="btn btn-primary" type="button" (click)="addRow(cfg)">{{ cfg.addLabel }}</button>
+        </div>
+      </div>
+
+      <table class="table" style="margin-top:16px;">
+        <thead>
+          <tr>
+            <th>{{ cfg.fieldLabel }}</th>
+            <th>{{ cfg.qtyLabel }}</th>
+            <th *ngIf="cfg.kind !== 'filamento'">Valor</th>
+            <th style="width:80px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of cfg.rows; let i = index">
+            <td>{{ cfg.labelFor(row.id) }}</td>
+            <td>{{ row.qty }}</td>
+            <td *ngIf="cfg.kind !== 'filamento'">R$ {{ cfg.unitPriceFor(row.id) | number:'1.2-2' }}</td>
+            <td class="actions">
+              <button class="btn btn-danger btn-icon" type="button" (click)="cfg.rows.splice(i,1)" title="Remover">🗑️</button>
+            </td>
+          </tr>
+          <tr *ngIf="!cfg.rows.length">
+            <td [attr.colspan]="cfg.kind === 'filamento' ? 3 : 4" class="muted" style="text-align:center; padding:16px;">Nenhum item adicionado.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="cfg.kind === 'filamento'" style="margin-top:12px; text-align:right;">
+        <b>Custo total filamentos: R$ {{ modalTotalFilamentos(cfg) | number:'1.2-2' }}</b>
+      </div>
+      <div *ngIf="cfg.kind === 'insumo'" style="margin-top:12px; text-align:right;">
+        <b>Custo total insumos: R$ {{ modalTotalQty(cfg) | number:'1.2-2' }}</b>
+      </div>
+      <div *ngIf="cfg.kind === 'embalagem'" style="margin-top:12px; text-align:right;">
+        <b>Custo total embalagens: R$ {{ modalTotalQty(cfg) | number:'1.2-2' }}</b>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" type="button" (click)="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" type="button" (click)="saveModal(cfg)">Salvar</button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-container *ngIf="modalCfg">
+  <ng-container *ngTemplateOutlet="modalTpl; context: { $implicit: modalCfg }"></ng-container>
+</ng-container>

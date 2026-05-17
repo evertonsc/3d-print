@@ -76,9 +76,8 @@
                  placeholder="±g">
           <button class="btn btn-primary btn-icon" (click)="applyAdjust(s.id)" [disabled]="adjusting[s.id!]">{{ adjusting[s.id!] ? '…' : '✓' }}</button>
         </td>
-        <td>
-          <button class="btn btn-primary btn-icon" title="Editar" (click)="edit(s)">✎</button>
-          <button class="btn btn-danger" (click)="remove(s.id)" [disabled]="removing[s.id!]">{{ removing[s.id!] ? '…' : '🗑' }}</button>
+        <td class="actions"><button class="btn btn-edit btn-icon" title="Editar" (click)="edit(s)">✏️</button>
+          <button class="btn btn-danger btn-icon" title="Excluir" (click)="remove(s.id)" [disabled]="removing[s.id!]">{{ removing[s.id!] ? '…' : '🗑️' }}</button>
         </td>
       </tr>
       <tr *ngIf="!spools.length"><td colspan="9" class="muted" style="text-align:center;padding:24px;">Nenhum carretel cadastrado.</td></tr>
